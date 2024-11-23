@@ -51,12 +51,24 @@ function isTaxWorker(userId) {
   return taxWorkers.includes(userId);
 }
 
+bot.onText(/\/contact/, (msg) => {
+  const chatId = msg.chat.id;
+
+  bot.sendMessage(
+    chatId,
+    `📞 Контактная информация:\n\n` +
+    `- Свяжитесь с администрацией бота через Telegram: @ArtikYaYa, @NeArtikYaYa.\n` +
+    `- Свяжитесь с Главой Налоговой @Tovslo.\n` +
+    `- Свяжитесь с Главой ПСМ @suuuuuperrr123.\n` +
+    `Мы рады вам помочь!`
+  );
+});
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
   if (users[chatId]) {
-    bot.sendMessage(chatId, 'Вы уже зарегистрированы! Используйте /help, чтобы увидеть доступные команды.');
+    bot.sendMessage(chatId, 'Вы уже зарегистрированы! Используйте /help, чтобы увидеть доступные команды.', mainMenu);
   } else {
     bot.sendMessage(chatId, 
       'Добро пожаловать в Налоговую Сервера Мед! Пожалуйста, зарегистрируйтесь, используя команду /register <имя>. Внимание, обязательно указывайте ник через @. Например: /register @ArtikYaYa.\n\n' +
@@ -66,6 +78,19 @@ bot.onText(/\/start/, (msg) => {
 
   }
 });
+
+const mainMenu = {
+  reply_markup: {
+    keyboard: [
+      ['/balance'],   // 1-я кнопка
+      ['/check_fines'],         // 2-я кнопка
+      ['/archive'],              // 3-я кнопка
+      ['/contact'],               // 4-я кнопка
+    ],
+    one_time_keyboard: true,           // Клавиатура исчезнет после нажатия кнопки
+    resize_keyboard: true,             // Изменяет размер клавиатуры под содержимое
+  },
+};
 
 bot.onText(/\/worker_help/, (msg) => {
   const chatId = msg.chat.id;
@@ -387,7 +412,7 @@ bot.on('message', (msg) => {
   const text = msg.text;
 
   // Если текст не соответствует известным командам, сообщаем о неизвестной команде
-  const knownCommands = ['/start', '/register', '/balance', '/check_fines', '/pay', '/archive', '/fine', '/approve', '/list', '/ban', '/unban', '/help', '/add_worker', '/remove_worker', '/worker_help', '/logs'];
+  const knownCommands = ['/start', '/register', '/balance', '/check_fines', '/pay', '/archive', '/fine', '/approve', '/list', '/ban', '/unban', '/help', '/add_worker', '/remove_worker', '/worker_help', '/contact'];
 
   if (!knownCommands.some(command => text.startsWith(command))) {
     bot.sendMessage(chatId, `🛑 Неизвестная команда: "${text}", используйте /help`);
