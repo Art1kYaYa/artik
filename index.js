@@ -27,24 +27,25 @@ function loadData(filename) {
 function saveData(filename, data) {
   fs.writeFileSync(filename, JSON.stringify(data, null, 2));
 }
+
+// Команда /help
 bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
 
-  let helpMessage = `
-  Добро пожаловать в Налоговую Сервера Мед! Вот доступные команды:
-
-  /start - Начать взаимодействие с ботом и пройти регистрацию.
-  /register <имя> - Зарегистрировать нового пользователя (каждому пользователю нужно уникальное имя). Внимание обязательно указывайте ник через @.
-
-  Команды для пользователей:
-  /balance - Посмотреть текущий баланс.
-  /check_fines - Не оплачаемые штрафы
-  /pay <Суммма> - Оплатить штраф (например, /pay 32). Причина - не обязательна, если не указана, будет использована причина "Оплата штрафа".
-  /archive - Архив штрафов
-  `;
-
-  bot.sendMessage(chatId, helpMessage);
-});
+  bot.sendMessage(
+    chatId,
+  `🆘 Список доступных команд:\n\n` +
+  `/balance - Посмотреть текущий баланс.\n` +
+  `/check_fines - Показать неоплаченные штрафы.\n` +
+  `/pay <сумма> - Оплатить штраф (пример: /pay 50).\n` +
+  `/archive - Просмотреть архив штрафов.\n` +
+  `/contact - Контактная информация.\n` +
+  `/start - Главное меню.\n` +
+    
+  `Используйте эти команды для работы с ботом!`
+     );
+  
+  });
 
 
 function isTaxWorker(userId) {
@@ -63,7 +64,23 @@ bot.onText(/\/contact/, (msg) => {
     `Мы рады вам помочь!`
   );
 });
+bot.onText(/\/delete_fine (\d+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const fineIndex = match[1];
 
+  if (!taxWorkers.includes(chatId)) {
+    bot.sendMessage(chatId, '🛑 Эта команда доступна только администраторам.');
+    return;
+  }
+
+  if (fines[fineIndex]) {
+    fines.splice(fineIndex, 1);
+    saveData(finesFile, fines);
+    bot.sendMessage(chatId, `✅ Штраф ${fineIndex} удален.`);
+  } else {
+    bot.sendMessage(chatId, '❌ Штраф не найден.');
+  }
+});
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
@@ -92,6 +109,76 @@ const mainMenu = {
   },
 };
 
+// Команда для просмотра всех неоплаченных штрафов
+bot.onText(/\/list_fines/, (msg) => {
+  const chatId = msg.chat.id;
+
+  if (!taxWorkers.includes(chatId)) {
+    bot.sendMessage(chatId, '🛑 Эта команда доступна только администраторам.');
+    return;
+  }
+
+  let finesList = '📋 Список всех неоплаченных штрафов:\n\n';
+  const buttons = [];
+  let foundFines = false;
+
+  for (const [userId, userFines] of Object.entries(fines)) {
+    userFines.forEach((fine, index) => {
+      if (!fine.paid) {
+        foundFines = true;
+        finesList += `ID: ${userId}-${index}\n` +
+          `- Пользователь: ${users[userId]?.username || 'Неизвестно'}\n` +
+          `- Сумма: ${fine.amount} ар\n` +
+          `- Причина: ${fine.reason || 'Не указана'}\n` +
+          `- Дата: ${fine.date}\n\n`;
+
+        buttons.push([{
+          text: `Удалить штраф ID ${userId}-${index}`,
+          callback_data: `delete_fine_${userId}_${index}`
+        }]);
+      }
+    });
+  }
+
+  if (!foundFines) {
+    bot.sendMessage(chatId, '✅ В системе нет неоплаченных штрафов.');
+    return;
+  }
+
+  bot.sendMessage(chatId, finesList, {
+    reply_markup: {
+      inline_keyboard: buttons
+    }
+  });
+});
+
+// Обработка нажатия кнопки удаления
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+  const data = query.data;
+
+  if (data.startsWith('delete_fine_')) {
+    const parts = data.split('_');
+    const userId = parts[2];
+    const fineIndex = parseInt(parts[3]);
+
+    if (fines[userId] && fines[userId][fineIndex]) {
+      fines[userId].splice(fineIndex, 1);
+
+      // Удаляем массив, если он пустой
+      if (fines[userId].length === 0) {
+        delete fines[userId];
+      }
+
+      saveData(finesFile, fines);
+
+      bot.answerCallbackQuery(query.id, { text: '✅ Штраф удален.' });
+      bot.sendMessage(chatId, `✅ Штраф с ID ${userId}-${fineIndex} успешно удален.`);
+    } else {
+      bot.answerCallbackQuery(query.id, { text: '❌ Штраф не найден.' });
+    }
+  }
+});
 bot.onText(/\/worker_help/, (msg) => {
   const chatId = msg.chat.id;
 
@@ -761,39 +848,82 @@ bot.onText(/\/cancel_fine/, (msg) => {
 // Функция для уведомления работников налоговой о новой заявке
 function notifyTaxWorkers(paymentRequest) {
   taxWorkers.forEach(workerId => {
-    bot.sendMessage(workerId, `🛑 Новая заявка на оплату:\n\nПользователь: ${paymentRequest.username}\nСумма: ${paymentRequest.amount}ар\nКомментарий: ${paymentRequest.comment}\nДата: ${paymentRequest.date}\n\nПодтвердите её командой /approve ${payments.length - 1}`);
+    bot.sendMessage(workerId, `🛑 Новая заявка на оплату:\n\nПользователь: ${paymentRequest.username}\nСумма: ${paymentRequest.amount}ар\nКомментарий: ${paymentRequest.comment}\nДата: ${paymentRequest.date}\n\nПодтвердите её командой /list_payments`);
   });
 }
 
-// Подтверждение оплаты заявки (только для работников налоговой)
-bot.onText(/\/approve (\d+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const paymentIndex = parseInt(match[1]);
 
+// Команда для отображения всех заявок на оплату
+bot.onText(/\/list_payments/, (msg) => {
+  const chatId = msg.chat.id;
+
+  // Проверяем, является ли пользователь работником налоговой
   if (!isTaxWorker(chatId)) {
     bot.sendMessage(chatId, '🛑 Эта команда доступна только работникам налоговой.');
     return;
   }
 
-  if (isNaN(paymentIndex) || !payments[paymentIndex]) {
-    bot.sendMessage(chatId, '🛑 Некорректный номер заявки.');
+  let paymentsList = '📋 Список заявок на оплату:\n\n';
+  const buttons = [];
+  let foundPayments = false;
+
+  payments.forEach((payment, index) => {
+    if (payment.status === 'pending') {
+      foundPayments = true;
+      paymentsList += `Заявка №${index}\n` +
+        `- Пользователь: ${payment.username}\n` +
+        `- Сумма: ${payment.amount} ар\n` +
+        `- Комментарий: ${payment.comment || 'Нет'}\n` +
+        `- Дата: ${payment.date}\n\n`;
+
+      buttons.push([{
+        text: `Подтвердить оплату №${index}`,
+        callback_data: `approve_payment_${index}`
+      }]);
+    }
+  });
+
+  if (!foundPayments) {
+    bot.sendMessage(chatId, '✅ Нет ожидающих заявок на оплату.');
     return;
   }
 
-  const payment = payments[paymentIndex];
+  bot.sendMessage(chatId, paymentsList, {
+    reply_markup: {
+      inline_keyboard: buttons
+    }
+  });
+});
 
-  if (payment.status !== 'pending') {
-    bot.sendMessage(chatId, '🛑 Эта заявка уже обработана.');
-    return;
+// Обработка нажатия кнопки для подтверждения оплаты
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+  const data = query.data;
+
+  if (data.startsWith('approve_payment_')) {
+    const paymentIndex = parseInt(data.split('_')[2]);
+
+    if (isNaN(paymentIndex) || !payments[paymentIndex]) {
+      bot.answerCallbackQuery(query.id, { text: '❌ Заявка не найдена.' });
+      return;
+    }
+
+    const payment = payments[paymentIndex];
+
+    if (payment.status !== 'pending') {
+      bot.answerCallbackQuery(query.id, { text: '🛑 Эта заявка уже обработана.' });
+      return;
+    }
+
+    // Подтверждаем оплату и обновляем данные
+    users[payment.userId].balance += payment.amount;
+    payment.status = 'approved';
+
+    saveData(paymentsFile, payments);
+    saveData(usersFile, users);
+
+    bot.answerCallbackQuery(query.id, { text: `✅ Оплата на сумму ${payment.amount} ар подтверждена.` });
+    bot.sendMessage(chatId, `🛑 Оплата на сумму ${payment.amount} для пользователя ${payment.username} подтверждена.`);
+    bot.sendMessage(payment.userId, `✅ Ваша заявка на оплату на сумму ${payment.amount} была подтверждена!`);
   }
-
-  // Подтверждение оплаты и обновление баланса
-  users[payment.userId].balance += payment.amount;
-  payment.status = 'approved'; // Обновляем статус заявки
-
-  saveData(paymentsFile, payments);
-  saveData(usersFile, users);
-
-  bot.sendMessage(chatId, `🛑 Оплата на сумму ${payment.amount} для пользователя ${payment.username} подтверждена.`);
-  bot.sendMessage(payment.userId, `✅ Ваша заявка на оплату на сумму ${payment.amount} была подтверждена!`);
 });
