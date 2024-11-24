@@ -60,7 +60,7 @@ bot.onText(/\/contact/, (msg) => {
     `📞 Контактная информация:\n\n` +
     `- Свяжитесь с администрацией бота через Telegram: @ArtikYaYa, @NeArtikYaYa.\n` +
     `- Свяжитесь с Главой Налоговой @Tovslo.\n` +
-    `- Свяжитесь с Главой ПСМ @suuuuuperrr123.\n` +
+    `- Свяжитесь с Главой ПСМ @suuuuuperrr123, @ozon_krutoy.\n` +
     `Мы рады вам помочь!`
   );
 });
@@ -525,7 +525,7 @@ bot.onText(/\/pay (\d+)/, (msg, match) => {
   const fine = userFines[fineIndex];
 
   if (fine.paid) {
-    bot.sendMessage(chatId, '🛑 Этот штраф уже был оплачен.');
+    bot.sendMessage(chatId, '✅ Успешно!');
     return;
   }
 
@@ -546,28 +546,84 @@ bot.onText(/\/pay (\d+)/, (msg, match) => {
 });
 
 
-
-// Проверка баланса
+// Команда /balance для отображения баланса
 bot.onText(/\/balance/, (msg) => {
   const chatId = msg.chat.id;
 
   if (users[chatId]) {
-    bot.sendMessage(chatId, `✅ Ваш баланс: ${users[chatId].balance}ар`);
+    let balance = users[chatId].balance;
+    const stacks = Math.floor(balance / 64); // Считаем количество полных стаков
+    const remainder = balance % 64; // Считаем остаток
+
+    // Сообщение с количеством стаков
+    let stackMessage = `📦 Стаков: ${stacks}`;
+    if (remainder > 0) {
+      stackMessage += ` + 1 неполный стак (${remainder} ар)`;
+    }
+
+    // Отправляем сообщение пользователю с текущим балансом
+    bot.sendMessage(
+      chatId,
+      `✅ Ваш баланс: ${balance} ар\n${stackMessage}`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '🔄 Обновить баланс', callback_data: 'refresh_balance' },
+              { text: '❌ Закрыть меню', callback_data: 'close_menu' },
+            ],
+          ],
+        },
+      }
+    );
+
+    // Удаляем команду /balance, чтобы не было лишних сообщений
+    bot.deleteMessage(chatId, msg.message_id);
   } else {
     bot.sendMessage(chatId, '🛑 Вы не зарегистрированы! Используйте команду /register <имя> для регистрации.');
   }
 });
 
-// Проверка баланса
-bot.onText(/\/Посмотреть текущий баланс/, (msg) => {
-  const chatId = msg.chat.id;
+// Обработка нажатия кнопок
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
 
-  if (users[chatId]) {
-    bot.sendMessage(chatId, `✅ Ваш баланс: ${users[chatId].balance}ар`);
-  } else {
-    bot.sendMessage(chatId, '🛑 Вы не зарегистрированы! Используйте команду /register <имя> для регистрации.');
+  if (data === 'refresh_balance') {
+    // Пример: обновление баланса без изменения суммы
+    const balance = users[chatId].balance;
+    const stacks = Math.floor(balance / 64); // Считаем полные стаки
+    const remainder = balance % 64; // Считаем остаток
+
+    let stackMessage = `📦 Стаков: ${stacks}`;
+    if (remainder > 0) {
+      stackMessage += ` + 1 неполный стак (${remainder} ар)`;
+    }
+
+    // Обновляем сообщение с балансом
+    bot.editMessageText(
+      `✅ Ваш обновленный баланс: ${balance} ар\n${stackMessage}`,
+      {
+        chat_id: chatId,
+        message_id: callbackQuery.message.message_id,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '🔄 Обновить баланс', callback_data: 'refresh_balance' },
+              { text: '❌ Закрыть меню', callback_data: 'close_menu' },
+            ],
+          ],
+        },
+      }
+    );
+  } else if (data === 'close_menu') {
+    // Закрытие меню
+    bot.deleteMessage(chatId, callbackQuery.message.message_id);
   }
 });
+
+// Загрузка данных при запуске
+loadUsers();
 
 const interactionLogs = [];
 bot.on('message', (msg) => {
@@ -635,7 +691,7 @@ bot.onText(/\/archive/, (msg) => {
   const chatId = msg.chat.id;
 
   if (!users[chatId]) {
-    bot.sendMessage(chatId, 'Вы не зарегистрированы! Используйте команду /register <имя> для регистрации.');
+    bot.sendMessage(chatId, '🛑 Вы не зарегистрированы! Используйте команду /register <имя> для регистрации.');
     return;
   }
 
@@ -662,8 +718,103 @@ bot.onText(/\/archive/, (msg) => {
     ? '📂 Архив штрафов:\n\n' + archiveList.join('')
     : '📂 У вас нет архивных штрафов.';
 
-  bot.sendMessage(chatId, response);
+  // Отправляем сообщение с кнопками
+  bot.sendMessage(chatId, response, {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: '❌ Закрыть меню', callback_data: 'close_menu' },
+          { text: '📋 Посмотреть текущие штрафы', callback_data: 'view_current_fines' },
+        ],
+      ],
+    },
+  }).then((message) => {
+    // Удаляем предыдущее сообщение
+    bot.deleteMessage(chatId, msg.message_id);
+  });
 });
+
+// Обработка нажатий на кнопки
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data === 'close_menu') {
+    // Закрытие меню
+    bot.deleteMessage(chatId, callbackQuery.message.message_id);
+  } else if (data === 'view_current_fines') {
+    // Удаляем старое сообщение
+    bot.deleteMessage(chatId, callbackQuery.message.message_id);
+
+    // Просмотр текущих штрафов
+    const userFines = fines[chatId] || [];
+    const currentFines = userFines
+      .filter(fine => !fine.paid && !fine.cancelled)
+      .map((fine, index) => {
+        return `Штраф ${index + 1}:\n` +
+               `- Сумма: ${fine.amount} ар\n` +
+               `- Причина: ${fine.reason || 'Не указана'}\n` +
+               `- Статус: Неоплачено\n` +
+               `- Дата: ${new Date(fine.date).toLocaleString()}\n\n`;
+      });
+
+    const response = currentFines.length > 0
+      ? '📋 Текущие штрафы:\n\n' + currentFines.join('')
+      : '📋 У вас нет текущих штрафов.';
+
+    // Отправляем сообщение с кнопками для текущих штрафов
+    bot.sendMessage(chatId, response, {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '❌ Закрыть меню', callback_data: 'close_menu' },
+            { text: '📂 Посмотреть архив штрафов', callback_data: 'archive' },
+          ],
+        ],
+      },
+    });
+  } else if (data === 'archive') {
+    // Удаляем старое сообщение
+    bot.deleteMessage(chatId, callbackQuery.message.message_id);
+
+    // Вернуться к просмотру архива
+    const userFines = fines[chatId] || [];
+    const archiveList = userFines
+      .filter((fine) => fine.paid || fine.cancelled)
+      .map((fine, index) => {
+        const status = fine.paid
+          ? 'Оплачен'
+          : fine.cancelled
+          ? 'Аннулирован'
+          : 'Неизвестно';
+
+        return `Штраф ${index + 1}:\n` +
+               `- Сумма: ${fine.amount} ар\n` +
+               `- Причина: ${fine.reason || 'Не указана'}\n` +
+               `- Статус: ${status}\n` +
+               `- Дата: ${
+                 fine.paidAt ? new Date(fine.paidAt).toLocaleString() : 'Не указана'
+               }\n\n`;
+      });
+
+    const response = archiveList.length > 0
+      ? '📂 Архив штрафов:\n\n' + archiveList.join('')
+      : '📂 У вас нет архивных штрафов.';
+
+    // Отправляем сообщение с кнопками для архива
+    bot.sendMessage(chatId, response, {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '❌ Закрыть меню', callback_data: 'close_menu' },
+            { text: '📋 Посмотреть текущие штрафы', callback_data: 'view_current_fines' },
+          ],
+        ],
+      },
+    });
+  }
+});
+
 
 // Регистрация команды /check_fines
 bot.onText(/\/check_fines/, (msg) => {
@@ -727,7 +878,7 @@ bot.onText(/\/check_fines/, (msg) => {
       }
     });
 
-    bot.sendMessage(chatId, `Ваш баланс: ${users[chatId].balance} ар.`);
+
   }
 
   // Функция для обработки пополнения баланса
@@ -747,7 +898,7 @@ bot.onText(/\/check_fines/, (msg) => {
   }
 
   // Вывод баланса и штрафов
-  finesList += `✅ Ваш текущий баланс: ${users[chatId].balance} ар.`;
+
   bot.sendMessage(chatId, finesList);
 });
 
