@@ -160,76 +160,49 @@ bot.onText(/\/delete_fine (\d+)/, (msg, match) => {
     bot.sendMessage(chatId, '❌ Штраф не найден.');
   }
 });
+// Массив для хранения заявок на доставку
+const deliveryRequests = [];
+const deliveryAdmin = '6081062380'; // Укажите ID администратора для доставки
+
+// Команда /start с выбором типа бота
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
-  if (users[chatId]) {
-    bot.sendMessage(
-      chatId,
-      'Вы уже зарегистрированы! Используйте /help, чтобы увидеть доступные команды.',
-      mainMenu
-    );
-  } else {
-    bot.sendMessage(
-      chatId,
-      'Добро пожаловать в Налоговую Сервера Мед! Пожалуйста, зарегистрируйтесь, используя команду /register <имя>. ' +
-      'Внимание, обязательно указывайте ник через @. Например: /register @ArtikYaYa.\n\n' +
-      'Если вы хотите работать в налоговой, пишите @Tovslo.\n' +
-      'Если проблемы с ботом, обращайтесь к @ArtikYaYa.\n\n' +
-      '📢 **Обратите внимание на наш конкурс!**\n' +
-      '**Приз:** 🏆 Наушники Fuxi H3\n' +
-      '**Условия участия:**\n' +
-      '1️⃣ Подписаться на нашу страницу в ВКонтакте.\n' +
-      '2️⃣ Подписаться на Телеграм-канал нашего друга.\n\n' +
-      '🗓 Итоги будут подведены **8 декабря 2024**.\n\n' +
-      'Участвуйте и выигрывайте классный приз! 🍀',
-      {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '📘 ВКонтакте', url: 'https://vk.com/havitru' }, // Укажите ссылку на ВКонтакте
-            ],
-            [
-              { text: '📢 Телеграм-канал', url: 'https://t.me/+dt8Sh8x762FmYWYy' }, // Укажите ссылку на Телеграм-канал
-            ],
-          ],
-        },
-      }
-    );
-  }
+  const message = `Привет! Выберите тип бота:\n\n` +
+    `1️⃣ Налоговая - управление штрафами.\n` +
+    `2️⃣ Доставка - оформить заявку на доставку.`;
+
+  bot.sendMessage(chatId, message, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: 'Налоговая', callback_data: 'tax_bot' }],
+        [{ text: 'Доставка', callback_data: 'delivery_bot' }]
+      ],
+    },
+  });
 });
 
+// Обработка выбора кнопок из команды /start
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
 
-const mainMenu = {
-  reply_markup: {
-    keyboard: [
-      ['/balance'],   // 1-я кнопка
-      ['/check_fines'],         // 2-я кнопка
-      ['/archive'],              // 3-я кнопка
-      ['/contact'],   
-      ['/promo']
-    ],
-    one_time_keyboard: true,           // Клавиатура исчезнет после нажатия кнопки
-    resize_keyboard: true,             // Изменяет размер клавиатуры под содержимое
-  },
-};
+  if (data === 'tax_bot') {
+    bot.sendMessage(
+      chatId,
+      'Добро пожаловать в Налоговую Сервера Мед! Пожалуйста, зарегистрируйтесь, используя команду /register <имя>. Например: /register @ArtikYaYa. Если вы уже зарегистрилованы /help'
+    );
+  } else if (data === 'delivery_bot') {
+    bot.sendMessage(
+      chatId,
+      'Привет, игрок! Чтобы оставить тикет на доставку, напиши команду /оформить_доставку.\n\n' +
+      'Чтобы оформить доставку, заполни небольшую анкету! После отправки сообщения должно быть сообщение об успешной отправке. Текст в образце должен быть соблюден, иначе тикет не отправится!' 
 
-// Команда для просмотра всех неоплаченных штрафо
-let activeMessages = {}; // Хранение ID активных сообщений для каждого пользователя
-
-// Проверка, является ли пользователь сотрудником налоговой
-function isWorker(chatId) {
-  return users[chatId]?.role === 'worker'; // Проверяем роль пользователя в users.json
-}
-
-// Удаление активного сообщения для пользователя
-function deleteActiveMessage(chatId) {
-  if (activeMessages[chatId]) {
-    bot.deleteMessage(chatId, activeMessages[chatId]).catch(() => {});
-    delete activeMessages[chatId];
+    );
   }
-}
+
+  bot.answerCallbackQuery(callbackQuery.id);
+});
 
 
 bot.onText(/\/worker_help/, (msg) => {
@@ -723,18 +696,6 @@ bot.on('message', (msg) => {
 });
 
 
-// Обработка всех сообщений
-bot.on('message', (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
-
-  // Если текст не соответствует известным командам, сообщаем о неизвестной команде
-  const knownCommands = ['/start', '/register', '/balance', '/check_fines', '/pay', '/archive', '/fine', '/list', '/help', '/add_worker', '/remove_worker', '/worker_help', '/contact', '/top_debtors', '/report_fine', '/check_user_fines', '/promo'];
-
-  if (!knownCommands.some(command => text.startsWith(command))) {
-    bot.sendMessage(chatId, `🛑 Неизвестная команда: "${text}", используйте /help`);
-  }
-});
 
 
 
@@ -1380,3 +1341,205 @@ bot.on('callback_query', (query) => {
     bot.sendMessage(payment.userId, `✅ Ваша заявка на оплату на сумму ${payment.amount} была подтверждена!`);
   }
 });
+
+
+
+// Команда для просмотра необработанных заявок с кнопками подтверждения
+bot.onText(/\/list_pending/, (msg) => {
+  const chatId = msg.chat.id;
+
+  const pendingDeliveries = deliveries.filter((d) => d.status === 'pending');
+
+  if (pendingDeliveries.length === 0) {
+    bot.sendMessage(chatId, '✅ Все заявки обработаны.');
+    return;
+  }
+
+  pendingDeliveries.forEach((delivery) => {
+    bot.sendMessage(
+      chatId,
+      `📦 *Заявка №${delivery.id}:*\n\n` +
+        `- Никнейм: ${delivery.nickname}\n` +
+        `- Товары: ${delivery.items}\n` +
+        `- Координаты: ${delivery.coordinates}\n` +
+        `- Дата: ${delivery.date}\n`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: `✅ Подтвердить заявку №${delivery.id}`, callback_data: `confirm_delivery_${delivery.id}` }
+            ]
+          ]
+        }
+      }
+    );
+  });
+
+  // Кнопка для закрытия меню
+  bot.sendMessage(chatId, '📋 Все заявки отображены.', {
+    reply_markup: {
+      inline_keyboard: [[{ text: 'Закрыть меню', callback_data: 'close_menu' }]]
+    }
+  });
+});
+
+// Обработка нажатий на кнопки подтверждения заявки
+bot.on('callback_query', (query) => {
+  const data = query.data;
+
+  if (data.startsWith('confirm_delivery_')) {
+    const deliveryId = parseInt(data.split('_')[2]);
+    const delivery = deliveries.find((d) => d.id === deliveryId);
+
+    if (delivery && delivery.status === 'pending') {
+      delivery.status = 'completed';
+      saveDeliveries();
+
+      bot.answerCallbackQuery(query.id, { text: '✅ Заявка подтверждена.' });
+
+      // Уведомление в чат
+      bot.sendMessage(
+        deliveryChatId,
+        `✅ Заявка №${delivery.id} успешно подтверждена!\nДоставка для игрока ${delivery.nickname} завершена.`
+      );
+
+      // Уведомление игроку
+      bot.sendMessage(
+        query.message.chat.id,
+        `🎉 Ваша заявка на доставку была успешно выполнена!`
+      );
+    } else {
+      bot.answerCallbackQuery(query.id, { text: '❌ Заявка уже обработана или не найдена.' });
+    }
+  } else if (data === 'close_menu') {
+    // Удаляем сообщение с меню
+    bot.deleteMessage(query.message.chat.id, query.message.message_id);
+    bot.sendMessage(query.message.chat.id, 'Меню закрыто.');
+  }
+});
+
+const deliveryFile = 'deliveries.json';
+
+// Загружаем данные о доставках из файла
+let deliveries = [];
+if (fs.existsSync(deliveryFile)) {
+  deliveries = JSON.parse(fs.readFileSync(deliveryFile, 'utf8'));
+}
+
+// Сохраняем данные в файл
+function saveDeliveries() {
+  fs.writeFileSync(deliveryFile, JSON.stringify(deliveries, null, 2));
+}
+
+// ID чата для доставки
+const deliveryChatId = -1002400665091; // Замените на ваш ID чата
+
+// Команда для оформления доставки
+bot.onText(/\/оформить_доставку/, (msg) => {
+  const chatId = msg.chat.id;
+
+  bot.sendMessage(
+    chatId,
+    `Чтобы оформить доставку, заполните анкету в следующем формате:\n\n` +
+      `*Образец:*\n\n` +
+      `*Никнейм:* Ваш_Никнейм\n` +
+      `*Товары:* Ваши_Товары\n` +
+      `*Координаты:* x y z\n` +
+      `*Дата оформление доставки:* 25/11/2024\n\n` +
+      `Текст должен строго соответствовать формату, иначе тикет не отправится.`,
+    { parse_mode: 'Markdown' }
+  );
+});
+
+// Обработка заявок
+bot.on('message', (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+
+  // Проверяем соответствие формату
+  const match = text.match(
+    /Никнейм:\s(.+)\nТовары:\s(.+)\nКоординаты:\s(.+)\nДата оформление доставки:\s(.+)/
+  );
+
+  if (match) {
+    const [_, nickname, items, coordinates, date] = match;
+
+    // Создаем заявку
+    const newDelivery = {
+      id: deliveries.length + 1,
+      nickname,
+      items,
+      coordinates,
+      date,
+      status: 'pending'
+    };
+
+    deliveries.push(newDelivery);
+    saveDeliveries();
+
+    bot.sendMessage(
+      chatId,
+      `✅ Ваша заявка на доставку была успешно отправлена!`
+    );
+
+    // Отправляем заявку в чат для доставки с кнопкой "Подтвердить"
+    bot.sendMessage(
+      deliveryChatId,
+      `📦 *Новая заявка на доставку:*\n\n` +
+        `*Никнейм:* ${nickname}\n` +
+        `*Товары:* ${items}\n` +
+        `*Координаты:* ${coordinates}\n` +
+        `*Дата:* ${date}`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: `✅ Подтвердить доставку`, callback_data: `confirm_delivery_${newDelivery.id}` }
+            ]
+          ]
+        }
+      }
+    );
+  } else if (!msg.text.startsWith('/') && msg.chat.type === 'private') {
+    // Сообщение не соответствует формату (только в личных сообщениях)
+    bot.sendMessage(
+      chatId,
+      `❌ Сообщение не соответствует формату. Пожалуйста, следуйте образцу.`
+    );
+  }
+});
+
+// Обработка нажатий на кнопку "Подтвердить"
+bot.on('callback_query', (query) => {
+  const data = query.data;
+
+  if (data.startsWith('confirm_delivery_')) {
+    const deliveryId = parseInt(data.split('_')[2]);
+    const delivery = deliveries.find((d) => d.id === deliveryId);
+
+    if (delivery && delivery.status === 'pending') {
+      delivery.status = 'completed';
+      saveDeliveries();
+
+      bot.answerCallbackQuery(query.id, { text: '✅ Заявка подтверждена.' });
+
+      // Уведомление в чат
+      bot.sendMessage(
+        deliveryChatId,
+        `✅ Заявка №${delivery.id} успешно подтверждена!`
+      );
+
+
+      // Уведомление игроку
+      bot.sendMessage(
+        query.message.chat.id,
+        `✅ Ваша заявка на доставку была успешно выполнена!`
+      );
+    } else {
+      bot.answerCallbackQuery(query.id, { text: '❌ Заявка уже обработана или не найдена.' });
+    }
+  }
+});
+
