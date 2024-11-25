@@ -109,88 +109,22 @@ const mainMenu = {
   },
 };
 
-// Команда для просмотра всех неоплаченных штрафов
-bot.onText(/\/list_fines/, (msg) => {
-  const chatId = msg.chat.id;
+// Команда для просмотра всех неоплаченных штрафо
+let activeMessages = {}; // Хранение ID активных сообщений для каждого пользователя
 
-  if (!taxWorkers.includes(chatId)) {
-    bot.sendMessage(chatId, '🛑 Эта команда доступна только администраторам.');
-    return;
+// Проверка, является ли пользователь сотрудником налоговой
+function isWorker(chatId) {
+  return users[chatId]?.role === 'worker'; // Проверяем роль пользователя в users.json
+}
+
+// Удаление активного сообщения для пользователя
+function deleteActiveMessage(chatId) {
+  if (activeMessages[chatId]) {
+    bot.deleteMessage(chatId, activeMessages[chatId]).catch(() => {});
+    delete activeMessages[chatId];
   }
+}
 
-  let finesList = '📋 Список всех неоплаченных штрафов:\n\n';
-  const buttons = [];
-  let foundFines = false;
-
-  for (const [userId, userFines] of Object.entries(fines)) {
-    userFines.forEach((fine, index) => {
-      if (!fine.paid) {
-        foundFines = true;
-        finesList += `ID: ${userId}-${index}\n` +
-          `- Пользователь: ${users[userId]?.username || 'Неизвестно'}\n` +
-          `- Сумма: ${fine.amount} ар\n` +
-          `- Причина: ${fine.reason || 'Не указана'}\n` +
-          `- Дата: ${fine.date}\n\n`;
-
-        buttons.push([{
-          text: `Удалить штраф ID ${userId}-${index}`,
-          callback_data: `delete_fine_${userId}_${index}`
-        }]);
-      }
-    });
-  }
-
-  if (!foundFines) {
-    bot.sendMessage(chatId, '✅ В системе нет неоплаченных штрафов.');
-    return;
-  }
-
-  bot.sendMessage(chatId, finesList, {
-    reply_markup: {
-      inline_keyboard: buttons
-    }
-  });
-});
-
-// Обработка нажатия кнопки удаления
-bot.on('callback_query', (query) => {
-  const chatId = query.message.chat.id;
-  const data = query.data;
-
-  if (data.startsWith('delete_fine_')) {
-    const parts = data.split('_');
-    const userId = parts[2];
-    const fineIndex = parseInt(parts[3]);
-
-    if (fines[userId] && fines[userId][fineIndex]) {
-      fines[userId].splice(fineIndex, 1);
-
-      // Удаляем массив, если он пустой
-      if (fines[userId].length === 0) {
-        delete fines[userId];
-      }
-
-      saveData(finesFile, fines);
-
-      bot.answerCallbackQuery(query.id, { text: '✅ Штраф удален.' });
-      bot.sendMessage(chatId, `✅ Штраф с ID ${userId}-${fineIndex} успешно удален.`);
-    } else {
-      bot.answerCallbackQuery(query.id, { text: '❌ Штраф не найден.' });
-    }
-  }
-});
-
-
-// Обработка закрытия меню для отчета
-bot.on('callback_query', (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const data = callbackQuery.data;
-
-  if (data === 'close_menu') {
-    // Закрытие меню
-    bot.deleteMessage(chatId, callbackQuery.message.message_id);
-  }
-});
 
 bot.onText(/\/worker_help/, (msg) => {
   const chatId = msg.chat.id;
