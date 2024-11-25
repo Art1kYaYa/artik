@@ -631,44 +631,6 @@ bot.on('message', (msg) => {
 });
 
 
-bot.onText(/\/pay (\d+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const fineIndex = parseInt(match[1]);
-
-  if (!users[chatId]) {
-    bot.sendMessage(chatId, '🛑 Вы не зарегистрированы! Используйте команду /register <имя> для регистрации.');
-    return;
-  }
-
-  const userFines = fines[chatId] || [];
-  if (!userFines || userFines.length <= fineIndex) {
-    bot.sendMessage(chatId, '');
-    return;
-  }
-
-  const fine = userFines[fineIndex];
-
-  if (fine.paid) {
-    bot.sendMessage(chatId, '✅ Успешно!');
-    return;
-  }
-
-  // Проверка баланса для оплаты штрафа
-  if (users[chatId].balance >= fine.amount) {
-    // Уменьшаем баланс пользователя и помечаем штраф как оплаченный
-    users[chatId].balance -= fine.amount;
-    fine.paid = true;
-
-    // Сохраняем изменения
-    saveData(usersFile, users);
-    saveData(finesFile, fines);
-
-    bot.sendMessage(chatId, `✅ Штраф на сумму ${fine.amount}ар успешно оплачен. Ваш новый баланс: ${users[chatId].balance}`);
-  } else {
-    bot.sendMessage(chatId, `🛑 У вас недостаточно средств для оплаты штрафа. Ваш баланс: ${users[chatId].balance}`);
-  }
-});
-
 
 // Команда /balance для отображения баланса
 bot.onText(/\/balance/, (msg) => {
@@ -1120,37 +1082,7 @@ bot.onText(/\/check_user_fines/, (msg) => {
 
 
 // Команда для создания заявки на оплату с возможной причиной
-bot.onText(/\/pay (\d+)(?: (.+))?/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const amount = parseInt(match[1]);
-  const comment = match[2] || 'Оплата штрафа'; // Если причина не указана, ставим "Оплата штрафа"
 
-  if (isNaN(amount) || amount <= 0) {
-    bot.sendMessage(chatId, '🛑 Пожалуйста, укажите корректную сумму для оплаты.');
-    return;
-  }
-
-  if (!users[chatId]) {
-    bot.sendMessage(chatId, '🛑 Вы не зарегистрированы! Используйте команду /register <имя> для регистрации.');
-    return;
-  }
-
-  // Создание заявки на оплату
-  const paymentRequest = {
-    userId: chatId,
-    username: users[chatId].username,
-    amount,
-    comment,
-    date: new Date().toISOString(),
-    status: 'pending' // статус "ожидание подтверждения"
-  };
-
-  payments.push(paymentRequest);
-  saveData(paymentsFile, payments);
-
-  bot.sendMessage(chatId, `✅ Заявка на оплату на сумму ${amount} создана. Ожидайте подтверждения.`);
-  notifyTaxWorkers(paymentRequest);  // Уведомление для налоговых работников
-});
 // Команда /cancel_fine для аннулирования штрафа (только для работников налоговой)
 bot.onText(/\/cancel_fine (\d+)/, (msg, match) => {
   const chatId = msg.chat.id;
@@ -1188,7 +1120,7 @@ bot.onText(/\/cancel_fine (\d+)/, (msg, match) => {
   fine.cancelled = true;
 
   // Возвращаем сумму штрафа на баланс пользователя
-  users[targetUserId].balance += fine.amount;
+  users[targetUserId].заявок += fine.amount;
 
   // Сохраняем изменения в файлах
   saveData(finesFile, fines);
@@ -1217,11 +1149,62 @@ function notifyTaxWorkers(paymentRequest) {
 }
 
 
-// Команда для отображения всех заявок на оплату
+// Путь к файлу payments.json
+const paymentsFile = './payments.json';
+
+// Функция для загрузки данных из JSON файла
+function loadData(filePath) {
+  if (fs.existsSync(filePath)) {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  }
+  return [];
+}
+
+// Функция для сохранения данных в JSON файл
+function saveData(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+}
+
+// Инициализация массива payments
+let payments = loadData(paymentsFile);
+
+// Команда /pay
+bot.onText(/\/pay (\d+)(?: (.+))?/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const amount = parseInt(match[1]);
+  const comment = match[2] || 'Оплата штрафа';
+
+  if (isNaN(amount) || amount <= 0) {
+    bot.sendMessage(chatId, '🛑 Пожалуйста, укажите корректную сумму для оплаты.');
+    return;
+  }
+
+  if (!users[chatId]) {
+    bot.sendMessage(chatId, '🛑 Вы не зарегистрированы! Используйте команду /register <имя> для регистрации.');
+    return;
+  }
+
+  // Создание заявки на оплату
+  const paymentRequest = {
+    userId: chatId,
+    username: users[chatId].username,
+    amount,
+    comment,
+    date: new Date().toISOString(),
+    status: 'pending',
+  };
+
+  payments.push(paymentRequest);
+  saveData(paymentsFile, payments);
+
+  bot.sendMessage(chatId, `✅ Заявка на оплату на сумму ${amount} создана. Ожидайте подтверждения.`);
+  notifyTaxWorkers(paymentRequest);
+});
+
+// Команда /list_payments
 bot.onText(/\/list_payments/, (msg) => {
   const chatId = msg.chat.id;
 
-  // Проверяем, является ли пользователь работником налоговой
   if (!isTaxWorker(chatId)) {
     bot.sendMessage(chatId, '🛑 Эта команда доступна только работникам налоговой.');
     return;
@@ -1242,7 +1225,7 @@ bot.onText(/\/list_payments/, (msg) => {
 
       buttons.push([{
         text: `Подтвердить оплату №${index}`,
-        callback_data: `approve_payment_${index}`
+        callback_data: `approve_payment_${index}`,
       }]);
     }
   });
@@ -1254,12 +1237,12 @@ bot.onText(/\/list_payments/, (msg) => {
 
   bot.sendMessage(chatId, paymentsList, {
     reply_markup: {
-      inline_keyboard: buttons
-    }
+      inline_keyboard: buttons,
+    },
   });
 });
 
-// Обработка нажатия кнопки для подтверждения оплаты
+// Обработка нажатий кнопок
 bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
@@ -1287,7 +1270,7 @@ bot.on('callback_query', (query) => {
     saveData(usersFile, users);
 
     bot.answerCallbackQuery(query.id, { text: `✅ Оплата на сумму ${payment.amount} ар подтверждена.` });
-    bot.sendMessage(chatId, `🛑 Оплата на сумму ${payment.amount} для пользователя ${payment.username} подтверждена.`);
+    bot.sendMessage(chatId, `✅ Оплата на сумму ${payment.amount} для пользователя ${payment.username} подтверждена.`);
     bot.sendMessage(payment.userId, `✅ Ваша заявка на оплату на сумму ${payment.amount} была подтверждена!`);
   }
 });
