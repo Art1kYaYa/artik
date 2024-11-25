@@ -37,7 +37,7 @@ bot.onText(/\/help/, (msg) => {
   `🆘 Список доступных команд:\n\n` +
   `/balance - Посмотреть текущий баланс.\n` +
   `/check_fines - Показать неоплаченные штрафы.\n` +
-  `/pay <сумма> - Пополнить баланс (пример: /pay 64).\n` +
+  `/pay <сумма> - Оплатить штраф (пример: /pay 50).\n` +
   `/archive - Просмотреть архив штрафов.\n` +
   `/contact - Контактная информация.\n` +
   `/start - Главное меню.\n` +
@@ -52,18 +52,96 @@ function isTaxWorker(userId) {
   return taxWorkers.includes(userId);
 }
 
-bot.onText(/\/contact/, (msg) => {
+bot.onText(/\/promo/, (msg) => {
   const chatId = msg.chat.id;
 
   bot.sendMessage(
     chatId,
-    `📞 Контактная информация:\n\n` +
-    `- Свяжитесь с администрацией бота через Telegram: @NeArtikYaYa.\n` +
-    `- Свяжитесь с Главой Налоговой @Tovslo.\n` +
-    `- Свяжитесь с Главой ПСМ @suuuuuperrr123, @ozon_krutoy.\n` +
-    `Мы рады вам помочь!`
+    `🎉 **Конкурс для всех наших подписчиков!** 🎉\n\n` +
+    `Мы рады объявить о новом конкурсе, в котором у вас есть шанс выиграть классные призы! 🎁\n\n` +
+    `**Условия участия:**\n` +
+    `1️⃣ Подписаться на нашу страницу в ВКонтакте.\n` +
+    `2️⃣ Подписаться на Телеграм-канал нашего друга.\n\n` +
+    `**Приз:**\n` +
+    `🏆 Наушники Fuxi H3\n\n` +
+    `🗓 Итоги будут подведены **8 декабря 2024**.\n\n` +
+    `Не упустите свой шанс выиграть и стать частью нашего сообщества! Удачи всем участникам! 🍀`,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '📘 ВКонтакте', url: 'https://vk.com/' }, // Укажите ссылку на ВКонтакте
+          ],
+          [
+            { text: '📢 Телеграм-канал', url: 'https://t.me/' }, // Укажите ссылку на Телеграм-канал
+          ],
+          [
+            { text: '❌ Закрыть', callback_data: 'close_promo' },
+          ],
+        ],
+      },
+    }
   );
 });
+
+// Обработка нажатия кнопки "Закрыть"
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const messageId = callbackQuery.message.message_id;
+
+  if (callbackQuery.data === 'close_promo') {
+    bot.deleteMessage(chatId, messageId).catch((err) => {
+      console.error(`Ошибка удаления сообщения: ${err.message}`);
+    });
+  }
+});
+
+bot.onText(/\/contact/, (msg) => {
+  const chatId = msg.chat.id;
+  const messageId = msg.message_id;
+
+  // Удаляем сообщение пользователя
+  bot.deleteMessage(chatId, messageId).catch((err) => {
+    console.error(`Не удалось удалить сообщение: ${err.message}`);
+  });
+
+  // Отправляем сообщение с контактной информацией и кнопкой закрытия
+  bot.sendMessage(
+    chatId,
+    `📞 Контактная информация:\n\n` +
+    `- Администрация бота: @NeArtikYaYa\n` +
+    `- Глава Налоговой: @Tovslo\n` +
+    `- Главы ПСМ: @suuuuuperrr123, @ozon_krutoy\n\n` +
+    `Мы рады вам помочь!`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Администрация бота', url: 'https://t.me/NeArtikYaYa' }],
+          [{ text: 'Глава Налоговой', url: 'https://t.me/Tovslo' }],
+          [
+            { text: 'Глава ПСМ 1', url: 'https://t.me/suuuuuperrr123' },
+            { text: 'Глава ПСМ 2', url: 'https://t.me/ozon_krutoy' },
+          ],
+          [{ text: '❌ Закрыть', callback_data: 'close_contact' }],
+        ],
+      },
+    }
+  );
+});
+
+// Обработка кнопки "Закрыть"
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const messageId = callbackQuery.message.message_id;
+
+  if (callbackQuery.data === 'close_contact') {
+    bot.deleteMessage(chatId, messageId).catch((err) => {
+      console.error(`Ошибка удаления сообщения: ${err.message}`);
+    });
+  }
+});
+
 bot.onText(/\/delete_fine (\d+)/, (msg, match) => {
   const chatId = msg.chat.id;
   const fineIndex = match[1];
@@ -142,7 +220,7 @@ bot.onText(/\/worker_help/, (msg) => {
 
   2. /list - Список всех авторизованных.
 
-  3. /approve <номер заявки> — Подтвердить заявку на оплату от пользователя.
+  3. /list_payments — Подтвердить заявку на оплату от пользователя.
   
   4. /report_fine — Отчет по штрафам для налоговой.
 
@@ -623,7 +701,7 @@ bot.on('message', (msg) => {
   const text = msg.text;
 
   // Если текст не соответствует известным командам, сообщаем о неизвестной команде
-  const knownCommands = ['/start', '/register', '/balance', '/check_fines', '/pay', '/archive', '/fine', '/list', '/help', '/add_worker', '/remove_worker', '/worker_help', '/contact', '/top_debtors', '/report_fine', '/check_user_fines'];
+  const knownCommands = ['/start', '/register', '/balance', '/check_fines', '/pay', '/archive', '/fine', '/list', '/help', '/add_worker', '/remove_worker', '/worker_help', '/contact', '/top_debtors', '/report_fine', '/check_user_fines', '/promo'];
 
   if (!knownCommands.some(command => text.startsWith(command))) {
     bot.sendMessage(chatId, `🛑 Неизвестная команда: "${text}", используйте /help`);
