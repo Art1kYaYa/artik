@@ -122,7 +122,6 @@ bot.onText(/\/contact/, (msg) => {
           [{ text: 'Глава Налоговой', url: 'https://t.me/Tovslo' }],
           [
             { text: 'Глава ПСМ 1', url: 'https://t.me/suuuuuperrr123' },
-            { text: 'Глава ПСМ 2', url: 'https://t.me/ozon_krutoy' },
           ],
           [{ text: '❌ Закрыть', callback_data: 'close_contact' }],
         ],
@@ -1458,7 +1457,12 @@ bot.on('message', (msg) => {
     deliveryAttempts[chatId] = (deliveryAttempts[chatId] || 0) + 1;
 
     if (deliveryAttempts[chatId] >= 3) {
-      bot.sendMessage(chatId, '❌ Сообщение не соответствует формату. Введите /оформить_доставку еще раз для подтверждения.');
+      bot.sendMessage(chatId, '❌ Сообщение не соответствует формату.\n         `*Образец:*\n\n` +
+        `*Никнейм:* Ваш_Никнейм\n` +
+        `Товары: Ваши_Товары\n` +
+        `*Координаты:* x y z\n` +
+        `*Дата оформление доставки:* 25/11/2024\n\n` +
+        `_*Сообщение должно строго соответствовать формату!*_`,');
       deliveryConfirmations[chatId] = false; // Сбрасываем подтверждение
       return;
     }
@@ -1528,7 +1532,7 @@ bot.onText(/\/start/, (msg) => {
     reply_markup: {
       keyboard: [
         [{ text: '/submit_case' }], // Подать в суд
-        [{ text: '/register' }],    // Регистрация
+        [{ text: '/register @username' }],    // Регистрация
         [{ text: '/help' }],        // Помощь
         [{ text: '/оформить_доставку' }], // Доставка
       ],
