@@ -389,6 +389,53 @@ bot.onText(/\/add_worker (\d+)/, (msg, match) => {
     bot.sendMessage(chatId, '❌ Пользователь с указанным ID не найден.');
   }
 });
+bot.onText(/\/register (.+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const username = match[1].trim(); // Убираем пробелы
+
+  try {
+    // Проверка, зарегистрирован ли пользователь
+    if (users[chatId]) {
+      bot.sendMessage(chatId, '✅ Вы уже зарегистрированы!');
+      return;
+    }
+
+    // Проверяем, начинается ли никнейм с "@"
+    if (!username.startsWith('@')) {
+      bot.sendMessage(chatId, '🛑 Никнейм должен начинаться с символа "@". Пожалуйста, выберите другой никнейм.');
+      return;
+    }
+
+    // Проверяем, занят ли никнейм
+    const isUsernameTaken = Object.values(users).some(user => {
+      // Игнорируем некорректные записи
+      if (!user || !user.username) return false;
+      return user.username.toLowerCase() === username.toLowerCase();
+    });
+
+    if (isUsernameTaken) {
+      bot.sendMessage(chatId, `🛑 Имя "${username}" уже занято. Пожалуйста, выберите другое имя.`);
+      return;
+    }
+
+    // Регистрируем пользователя
+    users[chatId] = { 
+      username, 
+      balance: 0, 
+      role: 'user' // Устанавливаем роль по умолчанию
+    };
+
+    // Сохраняем данные в файл
+    saveUsers(users);
+
+    // Подтверждаем регистрацию
+    bot.sendMessage(chatId, `✅ Регистрация успешна! Добро пожаловать, ${username}. Список доступных команд: /help`);
+  } catch (error) {
+    console.error('Ошибка при регистрации:', error);
+
+    bot.sendMessage(chatId, '🛑 Произошла ошибка при обработке вашей регистрации. Попробуйте позже.');
+  }
+});
 
 bot.onText(/\/remove_worker (\d+)/, (msg, match) => {
   const chatId = msg.chat.id;
@@ -431,87 +478,6 @@ function loadUsers() {
 
 
 
-bot.onText(/\/register (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const username = match[1];
-
-  if (users[chatId]) {
-    bot.sendMessage(chatId, '✅ Вы уже зарегистрированы!');
-  } else {
-
-    if (!username.startsWith('@')) {
-      bot.sendMessage(chatId, '🛑 Никнейм должен начинаться с символа "@". Пожалуйста, выберите другой никнейм.');
-      return;
-    }
-
-
-    const isUsernameTaken = Object.values(users).some(user => user.username.toLowerCase() === username.toLowerCase());
-    if (isUsernameTaken) {
-      bot.sendMessage(chatId, `🛑 Имя "${username}" уже занято. Пожалуйста, выберите другое имя.`);
-      return;
-    }
-
-    users[chatId] = { username, balance: 0 };
-    saveData(usersFile, users);
-    bot.sendMessage(chatId, `✅ Регистрация успешна! Добро пожаловать, ${username}. Список доступных команд: /help`);
-  }
-});
-
-
-// Функция для загрузки данных из файла
-function loadUsers() {
-  if (fs.existsSync(usersFile)) {
-    const data = fs.readFileSync(usersFile, 'utf-8');
-    return JSON.parse(data);
-  } else {
-    return {};
-  }
-}
-
-
-// Функция для загрузки данных из файла
-function loadUsers() {
-  if (fs.existsSync(usersFile)) {
-    const data = fs.readFileSync(usersFile, 'utf-8');
-    return JSON.parse(data);
-  } else {
-    return {};
-  }
-}
-
-// Функция для сохранения данных в файл
-function saveUsers(users) {
-  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2), 'utf-8');
-}
-
-// Функция для загрузки данных из файла
-function loadUsers() {
-  if (fs.existsSync(usersFile)) {
-    const data = fs.readFileSync(usersFile, 'utf-8');
-    return JSON.parse(data);
-  } else {
-    return {};
-  }
-}
-
-// Функция для сохранения данных в файл
-function saveUsers(users) {
-  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2), 'utf-8');
-}
-
-
-// Обновление данных пользователей, чтобы у каждого было поле `role`
-function ensureRoles(users) {
-  for (const userId in users) {
-    if (!users[userId].role) {
-      users[userId].role = 'user'; // По умолчанию присваиваем роль "user"
-    }
-  }
-  saveUsers(users); // Сохраняем изменения
-}
-
-// Убедимся, что все пользователи имеют поле `role`
-ensureRoles(users);
 
 
 bot.onText(/\/fine/, (msg) => {
@@ -1630,3 +1596,4 @@ bot.onText(/\/start/, (msg) => {
     },
   });
 });
+
