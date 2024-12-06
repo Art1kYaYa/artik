@@ -479,22 +479,117 @@ function loadUsers() {
 
 
 
+// Функции для сохранения данных
+function saveData(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+}
 
-bot.onText(/\/fine/, (msg) => {
-  if (!isTaxWorker(msg.chat.id)) {
-    bot.sendMessage(msg.chat.id, '❌ Эта команда доступна только работникам налоговой.');
-    return;
+// Проверка, является ли пользователь налоговым работником
+function isTaxWorker(userId) {
+  return users[userId] && (users[userId].role === 'worker' || users[userId].role === 'admin');
+}
+
+// Загрузка пользователей
+function loadUsers() {
+  if (fs.existsSync(usersFile)) {
+    const data = fs.readFileSync(usersFile, 'utf-8');
+    return JSON.parse(data);
   }
-  bot.sendMessage(msg.chat.id, '🛑 Правильный формат команды: /fine <пользователь> <сумма> <причина>\nПример: /fine @username 100 Нарушение правил.');
-});
+  return {};
+}
 
+// Загрузка штрафов
+function loadFines() {
+  if (fs.existsSync(finesFile)) {
+    const data = fs.readFileSync(finesFile, 'utf-8');
+    return JSON.parse(data);
+  }
+  return {};
+}
 
+// Загрузка данных
+function loadUsers() {
+  if (fs.existsSync(usersFile)) {
+    const data = fs.readFileSync(usersFile, 'utf-8');
+    return JSON.parse(data);
+  }
+  return {};
+}
+
+function loadFines() {
+  if (fs.existsSync(finesFile)) {
+    const data = fs.readFileSync(finesFile, 'utf-8');
+    return JSON.parse(data);
+  }
+  return {};
+}
+
+function saveFines() {
+  fs.writeFileSync(finesFile, JSON.stringify(fines, null, 2), 'utf-8');
+}
+
+// Проверка, является ли пользователь работником
+function isWorker(userId) {
+  return users[userId] && users[userId].role === 'worker';
+}
+
+// Загрузка данных
+function loadUsers() {
+  if (fs.existsSync(usersFile)) {
+    const data = fs.readFileSync(usersFile, 'utf-8');
+    return JSON.parse(data);
+  }
+  return {};
+}
+
+function loadFines() {
+  if (fs.existsSync(finesFile)) {
+    const data = fs.readFileSync(finesFile, 'utf-8');
+    return JSON.parse(data);
+  }
+  return {};
+}
+
+function saveFines() {
+  fs.writeFileSync(finesFile, JSON.stringify(fines, null, 2), 'utf-8');
+}
+
+// Проверка, является ли пользователь работником
+function isWorker(userId) {
+  return users[userId] && users[userId].role === 'worker';
+}
+
+function loadUsers() {
+  if (fs.existsSync(usersFile)) {
+    const data = fs.readFileSync(usersFile, 'utf-8');
+    return JSON.parse(data);
+  }
+  return {};
+}
+
+function loadFines() {
+  if (fs.existsSync(finesFile)) {
+    const data = fs.readFileSync(finesFile, 'utf-8');
+    return JSON.parse(data);
+  }
+  return {};
+}
+
+function saveFines() {
+  fs.writeFileSync(finesFile, JSON.stringify(fines, null, 2), 'utf-8');
+}
+
+// Проверка, является ли пользователь работником
+function isWorker(userId) {
+  return users[userId] && users[userId].role === 'worker';
+}
+
+// Выдача штрафа
 bot.onText(/\/fine (@\w+) (\d+) (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
 
-
-  if (!isTaxWorker(chatId)) {
-    bot.sendMessage(chatId, '');
+  if (!isWorker(chatId)) {
+    bot.sendMessage(chatId, '❌ Эта команда доступна только для работников.');
     return;
   }
 
@@ -503,76 +598,161 @@ bot.onText(/\/fine (@\w+) (\d+) (.+)/, (msg, match) => {
   const reason = match[3];
 
   if (isNaN(amount) || amount <= 0) {
-    bot.sendMessage(chatId, '🛑 Пожалуйста, укажите корректную сумму штрафа.');
+    bot.sendMessage(chatId, '❌ Укажите корректную сумму штрафа.');
     return;
   }
 
+  const targetUserId = Object.keys(users).find(
+    (id) => users[id].username === targetUsername
+  );
 
-  const userId = Object.keys(users).find(id => users[id].username === targetUsername);
-
-  if (!userId) {
-    bot.sendMessage(chatId, `🛑 Пользователь с именем ${targetUsername} не найден. Проверьте имя и попробуйте снова.`);
+  if (!targetUserId) {
+    bot.sendMessage(chatId, `❌ Пользователь ${targetUsername} не найден.`);
     return;
   }
 
+  if (!fines[targetUserId]) fines[targetUserId] = [];
 
-  if (!fines[userId]) fines[userId] = [];
+  fines[targetUserId].push({
+    amount,
+    reason,
+    issuedBy: chatId,
+    date: new Date().toISOString(),
+    paid: false,
+  });
 
+  saveFines();
 
-  fines[userId].push({ amount, reason, date: new Date().toISOString(), paid: false });
+  bot.sendMessage(
+    chatId,
+    `✅ Штраф для ${targetUsername} на сумму ${amount} успешно добавлен.\nПричина: ${reason}.`
+  );
 
-  saveData(finesFile, fines);
-  saveData(usersFile, users);
-
-  bot.sendMessage(chatId, `🛑 Штраф для ${targetUsername} на сумму ${amount}ар успешно добавлен. Причина: ${reason}`);
-  bot.sendMessage(userId, `✅ Вам был выписан штраф на сумму ${amount}ар. Причина: ${reason}. Текущий баланс: ${users[userId].balance}`);
+  bot.sendMessage(
+    targetUserId,
+    `❌ Вам был выписан штраф на сумму ${amount}.\nПричина: ${reason}.\nНажмите "Штраф оплачен", если вы оплатили штраф.`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: 'Штраф оплачен',
+              callback_data: `fine_paid_${targetUserId}`,
+            },
+          ],
+        ],
+      },
+    }
+  );
 });
 
+// Обработка кнопки "Штраф оплачен"
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+  const data = query.data;
 
-// Функция для загрузки данных из файла
-function loadUsers() {
-  if (fs.existsSync(usersFile)) {
-    const data = fs.readFileSync(usersFile, 'utf-8');
-    return JSON.parse(data); // Возвращаем объект
-  } else {
-    return {}; // Если файла нет, возвращаем пустой объект
+  if (data.startsWith('fine_paid_')) {
+    const targetUserId = data.split('_')[2];
+
+    if (!fines[targetUserId]) {
+      bot.answerCallbackQuery(query.id, { text: '❌ Штрафов не найдено.' });
+      return;
+    }
+
+    const unpaidFine = fines[targetUserId].find((fine) => !fine.paid);
+
+    if (!unpaidFine) {
+      bot.answerCallbackQuery(query.id, { text: '✅ Все штрафы уже оплачены.' });
+      return;
+    }
+
+    // Уведомляем всех работников налоговой для подтверждения
+    Object.entries(users)
+      .filter(([_, user]) => user.role === 'worker')
+      .forEach(([workerId]) => {
+        bot.sendMessage(
+          workerId,
+          `📢 Пользователь ${users[targetUserId].username} заявил, что оплатил штраф на сумму ${unpaidFine.amount}.\nПричина: ${unpaidFine.reason}.\n\nПодтвердите или отклоните оплату.`,
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: '✅ Подтвердить оплату',
+                    callback_data: `confirm_payment_${targetUserId}`,
+                  },
+                  {
+                    text: '❌ Отклонить оплату',
+                    callback_data: `reject_payment_${targetUserId}`,
+                  },
+                ],
+              ],
+            },
+          }
+        );
+      });
+
+    bot.answerCallbackQuery(query.id, {
+      text: '✅ Заявка на оплату отправлена налоговым работникам.', // Изменил текст на "Заявка на оплату отправлена"
+    });
   }
-}
 
+  // Подтверждение оплаты штрафа
+  if (data.startsWith('confirm_payment_')) {
+    const targetUserId = data.split('_')[2];
 
-// Функция для загрузки данных из файла
-function loadUsers() {
-  if (fs.existsSync(usersFile)) {
-    const data = fs.readFileSync(usersFile, 'utf-8');
-    return JSON.parse(data); // Возвращаем объект
-  } else {
-    return {}; // Если файла нет, возвращаем пустой объект
+    const unpaidFineIndex = fines[targetUserId].findIndex((fine) => !fine.paid);
+
+    if (unpaidFineIndex === -1) {
+      bot.answerCallbackQuery(query.id, {
+        text: '✅ Все штрафы уже оплачены.',
+      });
+      return;
+    }
+
+    fines[targetUserId][unpaidFineIndex].paid = true;
+    saveFines();
+
+    bot.answerCallbackQuery(query.id, {
+      text: '✅ Оплата подтверждена.',
+    });
+
+    bot.sendMessage(
+      query.message.chat.id,
+      `✅ Оплата штрафа пользователя ${users[targetUserId].username} подтверждена.`
+    );
+
+    bot.sendMessage(
+      targetUserId,
+      `✅ Ваш штраф на сумму ${fines[targetUserId][unpaidFineIndex].amount} был успешно оплачен.`
+    );
+
+    // Убираем кнопки из сообщения
+    bot.editMessageReplyMarkup(
+      { inline_keyboard: [] },
+      { chat_id: query.message.chat.id, message_id: query.message.message_id }
+    );
   }
-}
 
+  // Отклонение оплаты штрафа
+  if (data.startsWith('reject_payment_')) {
+    const targetUserId = data.split('_')[2];
 
+    bot.answerCallbackQuery(query.id, {
+      text: '❌ Оплата отклонена.',
+    });
 
+    bot.sendMessage(
+      query.message.chat.id,
+      `❌ Оплата штрафа пользователя ${users[targetUserId].username} отклонена.`
+    );
 
-// Путь к файлам с данными пользователей
-
-
-// Функция для загрузки данных пользователей
-function loadUsers() {
-  if (fs.existsSync(usersFile)) {
-    const data = fs.readFileSync(usersFile, 'utf-8');
-    return JSON.parse(data); // Возвращаем объект
-  } else {
-    return {}; // Если файла нет, возвращаем пустой объект
+    bot.sendMessage(
+      targetUserId,
+      `❌ Ваш запрос об оплате штрафа был отклонен. Обратитесь к налоговому работнику.`
+    );
   }
-}
-
-// Функция для сохранения данных пользователей
-function saveUsers(users) {
-  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2), 'utf-8');
-}
-
-// Загрузка данных пользователей
-
+});
 
 // Команда /list - список всех пользователей с их ролями
 bot.on('message', (msg) => {
@@ -606,81 +786,6 @@ bot.on('message', (msg) => {
 
 
 
-// Команда /balance для отображения баланса
-bot.onText(/\/balance/, (msg) => {
-  const chatId = msg.chat.id;
-
-  if (users[chatId]) {
-    let balance = users[chatId].balance;
-    const stacks = Math.floor(balance / 64); // Считаем количество полных стаков
-    const remainder = balance % 64; // Считаем остаток
-
-    // Сообщение с количеством стаков
-    let stackMessage = `📦 Стаков: ${stacks}`;
-    if (remainder > 0) {
-      stackMessage += ` + 1 неполный стак (${remainder} ар)`;
-    }
-
-    // Отправляем сообщение пользователю с текущим балансом
-    bot.sendMessage(
-      chatId,
-      `✅ Ваш баланс: ${balance} ар\n${stackMessage}`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '🔄 Обновить баланс', callback_data: 'refresh_balance' },
-              { text: '❌ Закрыть меню', callback_data: 'close_menu' },
-            ],
-          ],
-        },
-      }
-    );
-
-    // Удаляем команду /balance, чтобы не было лишних сообщений
-    bot.deleteMessage(chatId, msg.message_id);
-  } else {
-    bot.sendMessage(chatId, '🛑 Вы не зарегистрированы! Используйте команду /register <имя> для регистрации.');
-  }
-});
-
-// Обработка нажатия кнопок
-bot.on('callback_query', (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const data = callbackQuery.data;
-
-  if (data === 'refresh_balance') {
-    // Пример: обновление баланса без изменения суммы
-    const balance = users[chatId].balance;
-    const stacks = Math.floor(balance / 64); // Считаем полные стаки
-    const remainder = balance % 64; // Считаем остаток
-
-    let stackMessage = `📦 Стаков: ${stacks}`;
-    if (remainder > 0) {
-      stackMessage += ` + 1 неполный стак (${remainder} ар)`;
-    }
-
-    // Обновляем сообщение с балансом
-    bot.editMessageText(
-      `✅ Ваш обновленный баланс: ${balance} ар\n${stackMessage}`,
-      {
-        chat_id: chatId,
-        message_id: callbackQuery.message.message_id,
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '🔄 Обновить баланс', callback_data: 'refresh_balance' },
-              { text: '❌ Закрыть меню', callback_data: 'close_menu' },
-            ],
-          ],
-        },
-      }
-    );
-  } else if (data === 'close_menu') {
-    // Закрытие меню
-    bot.deleteMessage(chatId, callbackQuery.message.message_id);
-  }
-});
 
 // Загрузка данных при запуске
 loadUsers();
@@ -1340,14 +1445,33 @@ function saveDeliveries() {
   fs.writeFileSync(deliveriesFile, JSON.stringify(deliveries, null, 2));
 }
 
+
+
+
+// Загружаем данные о доставках
+function loadDeliveries() {
+  if (fs.existsSync(deliveriesFile)) {
+    const data = fs.readFileSync(deliveriesFile, 'utf-8');
+    return JSON.parse(data);
+  }
+  return [];
+}
+
+// Сохраняем данные о доставках
+function saveDeliveries() {
+  fs.writeFileSync(deliveriesFile, JSON.stringify(deliveries, null, 2), 'utf-8');
+}
+
+// Загружаем заявки при старте
+deliveries = loadDeliveries();
+
 // Хранилище для отслеживания попыток с ошибками
 const deliveryAttempts = {};
 
-
-
-// Регулярное выражение для проверки формата заявки на доставку
+// Регулярное выражение для проверки формата заявки
 const deliveryFormatRegex =
   /Никнейм:\s*(.+)\nТовары:\s*(.+)\nКоординаты:\s*(.+)\nДата оформление доставки:\s*(\d{2}\/\d{2}\/\d{4})/;
+
 
 // Команда /оформить_доставку
 bot.onText(/\/оформить_доставку/, (msg) => {
@@ -1356,47 +1480,46 @@ bot.onText(/\/оформить_доставку/, (msg) => {
   // Сбрасываем счетчик ошибок
   deliveryAttempts[chatId] = 0;
 
-  // Текст, который нужно скопировать
-  const deliveryTemplate = 
-    `Никнейм: \n` +
-    `Товары: \n` +
-    `Координаты: x y z\n` +
-    `Дата оформление доставки: 02/12/2024`;
+  // Текст шаблона
+  const deliveryTemplate =
+    `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: 28/11/2024`;
 
-  // Отправляем сообщение с кнопкой для копирования
+  // Отправляем сообщение с инструкцией
   bot.sendMessage(
     chatId,
     `Чтобы оформить доставку, заполните анкету по следующему образцу:\n\n` +
-      `Образец:\n\n` +
-      `Никнейм: Ваш_Никнейм\n` +
-      `Товары: Ваши_Товары\n` +
-      `Координаты: x y z\n` +
-      `Дата оформление доставки: 02/12/2024\n\n` +
+      `*Образец:*\n\n${deliveryTemplate}\n\n` +
       `Сообщение должно строго соответствовать формату!`,
     {
+      parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
           [
             {
-              text: "Копировать образец(текст снизу можно скопировать нажатием)",
-              callback_data: "copy_delivery_template"
-            }
-          ]
-        ]
-      }
+              text: 'Копировать образец',
+              callback_data: 'copy_delivery_template',
+            },
+          ],
+        ],
+      },
     }
   );
-
-  // Слушаем нажатие на кнопку
-  bot.on('callback_query', (query) => {
-    if (query.data === 'copy_delivery_template') {
-      // Отправляем текст шаблона пользователю для копирования
-      bot.sendMessage(chatId, `\`${deliveryTemplate}\``, { parse_mode: 'Markdown' });
-    }
-  });
 });
 
-// Проверка сообщений на соответствие формату доставки
+// Слушаем нажатие на кнопку
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+
+  if (query.data === 'copy_delivery_template') {
+    // Отправляем текст шаблона пользователю для копирования
+    const deliveryTemplate =
+      `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: 28/11/2024`;
+    bot.sendMessage(chatId, deliveryTemplate, { parse_mode: 'Markdown' });
+    bot.answerCallbackQuery(query.id, { text: 'Шаблон отправлен!' });
+  }
+});
+
+// Проверка сообщений на соответствие формату
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
@@ -1406,8 +1529,7 @@ bot.on('message', (msg) => {
 
   // Проверяем, соответствует ли сообщение формату
   if (deliveryFormatRegex.test(text)) {
-    // Сбрасываем счетчик попыток, если сообщение корректное
-    deliveryAttempts[chatId] = 0;
+    deliveryAttempts[chatId] = 0; // Сбрасываем счетчик
 
     const match = text.match(deliveryFormatRegex);
     const deliveryData = {
@@ -1421,13 +1543,13 @@ bot.on('message', (msg) => {
     deliveries.push(deliveryData);
     saveDeliveries();
 
-    // Оповещение игрока о принятии заявки
+    // Оповещаем игрока
     bot.sendMessage(chatId, '✅ Ваша заявка успешно отправлена на обработку!');
 
-    // Отправка заявки в админский чат с кнопкой "Подтвердить доставку"
+    // Отправляем заявку в админский чат
     bot.sendMessage(
       adminChatId,
-      `📦 Новая заявка на доставку:\n\n` +
+      `📦 *Новая заявка на доставку:*\n\n` +
         `*Никнейм:* ${deliveryData.nickname}\n` +
         `*Товары:* ${deliveryData.items}\n` +
         `*Координаты:* ${deliveryData.coordinates}\n` +
@@ -1458,47 +1580,45 @@ bot.on('message', (msg) => {
         `❌ Трижды введено сообщение не по образцу. Попробуйте снова, начав с команды /оформить_доставку.`
       );
     } else {
-      // Сообщение о неправильном формате
       bot.sendMessage(
         chatId,
-        `❌ Сообщение не соответствует формату.\n\n` +
-          `*Образец:*\n\n` +
+        `❌ Сообщение не соответствует формату.\n\n*Образец:*\n\n` +
           `*Никнейм:* Ваш_Никнейм\n` +
-          `Товары: Ваши_Товары\n` +
+          `*Товары:* Ваши_Товары\n` +
           `*Координаты:* x y z\n` +
-          `*Дата оформление доставки: 02/12/2024\n\n` +
-          `*Сообщение должно строго соответствовать формату!*`,
+          `*Дата оформление доставки:* 28/11/2024\n\n` +
+          `Сообщение должно строго соответствовать формату!`,
         { parse_mode: 'Markdown' }
       );
     }
   }
 });
 
-// Обработка нажатия кнопки "Подтвердить доставку"
+// Обработка кнопки "Подтвердить доставку"
 bot.on('callback_query', (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
 
-  // Проверяем, связана ли кнопка с подтверждением доставки
   if (data.startsWith('confirm_')) {
     const nickname = data.split('_')[1];
 
-    // Удаляем заявку из списка
+    // Удаляем заявку
     deliveries = deliveries.filter((delivery) => delivery.nickname !== nickname);
     saveDeliveries();
 
     // Уведомляем администратора и игрока
-    bot.sendMessage(chatId, `✅ Доставка для ${nickname} подтверждена.`);
+    bot.sendMessage(adminChatId, `✅ Доставка для ${nickname} подтверждена.`);
     bot.sendMessage(
       callbackQuery.from.id,
-      `✅ Ваша доставка была успешно выполнена!`
+      `✅  для пользователя ${nickname} было успешно выполнена!`
     );
 
     // Убираем кнопку из сообщения
     bot.editMessageReplyMarkup(
       { inline_keyboard: [] },
-      { chat_id: chatId, message_id: callbackQuery.message.message_id }
+      { chat_id: callbackQuery.message.chat.id, message_id: callbackQuery.message.message_id }
     );
+
+    bot.answerCallbackQuery(callbackQuery.id, { text: 'Доставка подтверждена!' });
   }
 });
 
@@ -1595,5 +1715,5 @@ bot.onText(/\/start/, (msg) => {
       one_time_keyboard: false, // Клавиатура остается на экране
     },
   });
-});
+})
 
