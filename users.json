@@ -7,7 +7,7 @@
   "1378783537": {
     "username": "@Tovslo",
     "balance": 0,
-    "role": "worker"
+    "role": "user"
   },
   "1469233103": {
     "username": "@DamikYT",
@@ -65,8 +65,8 @@
     "role": "worker"
   },
   "1080483185": {
-  "username": "@GAME_PRO2016",
-  "balance": 0,
-  "role": "user"
+   "username": "@GAMEPRO2016",
+   "balance": 0,
+   "role": "user"
   }
 }
