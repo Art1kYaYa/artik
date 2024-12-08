@@ -9,7 +9,7 @@ const usersFile = './users.json';
 const finesFile = './fines.json';
 
 
-const taxWorkers = [2030128216];  
+const taxWorkers = [2030128216, 6343971096];  
 
 
 let users = loadData(usersFile) || {};
