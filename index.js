@@ -9,7 +9,7 @@ const usersFile = './users.json';
 const finesFile = './fines.json';
 
 
-const taxWorkers = [1378783537, 2030128216, 7045248304];  
+const taxWorkers = [2030128216];  
 
 
 let users = loadData(usersFile) || {};
@@ -36,13 +36,12 @@ bot.onText(/\/help/, (msg) => {
   bot.sendMessage(
     chatId,
   `🆘 Список доступных команд:\n\n` +
-  `/balance - Посмотреть текущий баланс.\n` +
   `/check_fines - Показать неоплаченные штрафы.\n` +
-  `/pay <сумма> - Оплатить штраф (пример: /pay 50).\n` +
   `/archive - Просмотреть архив штрафов.\n` +
   `/contact - Контактная информация.\n` +
-  `/start - Главное меню.\n` +
-
+  `/start - Главное меню.\n\n` +
+  `Команды работникам:\n` +
+  `/worker_help - Помощь для работников.\n\n` +
 
   `Используйте эти команды для работы с ботом!`
      );
@@ -114,7 +113,7 @@ bot.onText(/\/contact/, (msg) => {
     `📞 Контактная информация:\n\n` +
     `- Администрация бота: @NeArtikYaYa\n` +
     `- Глава Налоговой: @Tovslo\n` +
-    `- Главы ПСМ: @suuuuuperrr123, @ozon_krutoy\n\n` +
+    `- Главы ПСМ: @mak097a\n\n` +
     `Мы рады вам помочь!`,
     {
       reply_markup: {
@@ -122,7 +121,7 @@ bot.onText(/\/contact/, (msg) => {
           [{ text: 'Администрация бота', url: 'https://t.me/NeArtikYaYa' }],
           [{ text: 'Глава Налоговой', url: 'https://t.me/Tovslo' }],
           [
-            { text: 'Глава ПСМ 1', url: 'https://t.me/suuuuuperrr123' },
+            { text: 'Глава ПСМ 1', url: 'https://t.me/mak097a' },
           ],
           [{ text: '❌ Закрыть', callback_data: 'close_contact' }],
         ],
@@ -240,129 +239,7 @@ bot.onText(/\/notify_debtors/, (msg) => {
   bot.sendMessage(chatId, `✅ Уведомления отправлены ${notifiedCount} должникам.`);
 });
 
-bot.onText(/\/report_fine/, (msg) => {
-  const chatId = msg.chat.id;
 
-  if (!isWorker(chatId)) {
-    bot.sendMessage(chatId, '🛑 Эта команда доступна только для сотрудников.');
-    return;
-  }
-
-  deleteActiveMessage(chatId); 
-  sendReportFine(chatId);
-
-  bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-});
-
-bot.onText(/\/top_debtors/, (msg) => {
-  const chatId = msg.chat.id;
-
-  if (!isWorker(chatId)) {
-    bot.sendMessage(chatId, '🛑 Эта команда доступна только для сотрудников.');
-    return;
-  }
-
-  deleteActiveMessage(chatId);
-  sendTopDebtors(chatId);
-
-  bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-});
-
-function sendReportFine(chatId) {
-  let totalFines = 0;
-  let totalPaid = 0;
-  let totalCancelled = 0;
-  let totalUnpaidAmount = 0;
-
-  for (const userId in fines) {
-    const userFines = fines[userId] || [];
-
-    userFines.forEach((fine) => {
-      totalFines++;
-      if (fine.paid) {
-        totalPaid++;
-      } else if (fine.cancelled) {
-        totalCancelled++;
-      } else {
-        totalUnpaidAmount += fine.amount;
-      }
-    });
-  }
-
-  const report = `📊 Отчет по штрафам:\n\n` +
-                 `- Всего выписано штрафов: ${totalFines}\n` +
-                 `- Оплачено штрафов: ${totalPaid}\n` +
-                 `- Аннулировано штрафов: ${totalCancelled}\n` +
-                 `- Сумма неоплаченных штрафов: ${totalUnpaidAmount} ар\n`;
-
-  bot.sendMessage(chatId, report, {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: '🔍 Топ должников', callback_data: 'view_top_debtors' },
-          { text: '❌ Закрыть меню', callback_data: 'close_menu' },
-        ],
-      ],
-    },
-  }).then((sentMessage) => {
-    activeMessages[chatId] = sentMessage.message_id; // Сохраняем ID активного сообщения
-  });
-}
-
-function sendTopDebtors(chatId) {
-  const debtors = [];
-
-  for (const userId in fines) {
-    const userFines = fines[userId] || [];
-    const unpaidAmount = userFines
-      .filter(fine => !fine.paid && !fine.cancelled)
-      .reduce((sum, fine) => sum + fine.amount, 0);
-
-    if (unpaidAmount > 0) {
-      debtors.push({ username: users[userId]?.username || `ID: ${userId}`, amount: unpaidAmount });
-    }
-  }
-
-  debtors.sort((a, b) => b.amount - a.amount);
-
-  const topDebtorsList = debtors.slice(0, 10).map((debtor, index) => {
-    return `${index + 1}. ${debtor.username}: ${debtor.amount} ар`;
-  });
-
-  const response = topDebtorsList.length > 0
-    ? '📋 Топ должников:\n\n' + topDebtorsList.join('\n')
-    : '✅ Все пользователи оплатили свои штрафы.';
-
-  bot.sendMessage(chatId, response, {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: '📊 Посмотреть отчет', callback_data: 'view_report' },
-          { text: '❌ Закрыть меню', callback_data: 'close_menu' },
-        ],
-      ],
-    },
-  }).then((sentMessage) => {
-    activeMessages[chatId] = sentMessage.message_id; 
-  });
-}
-
-bot.on('callback_query', (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const data = callbackQuery.data;
-
-  if (data === 'close_menu') {
-    deleteActiveMessage(chatId); 
-  } else if (data === 'view_report') {
-    deleteActiveMessage(chatId); 
-    sendReportFine(chatId);
-  } else if (data === 'view_top_debtors') {
-    deleteActiveMessage(chatId); 
-    sendTopDebtors(chatId);
-  }
-
-  bot.answerCallbackQuery(callbackQuery.id);
-});
 
 bot.onText(/\/add_worker (\d+)/, (msg, match) => {
   const chatId = msg.chat.id;
@@ -1482,7 +1359,7 @@ bot.onText(/\/оформить_доставку/, (msg) => {
 
   // Текст шаблона
   const deliveryTemplate =
-    `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: 28/11/2024`;
+    `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: 08/12/2024`;
 
   // Отправляем сообщение с инструкцией
   bot.sendMessage(
@@ -1513,7 +1390,7 @@ bot.on('callback_query', (query) => {
   if (query.data === 'copy_delivery_template') {
     // Отправляем текст шаблона пользователю для копирования
     const deliveryTemplate =
-      `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: 28/11/2024`;
+      `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: 08/12/2024`;
     bot.sendMessage(chatId, deliveryTemplate, { parse_mode: 'Markdown' });
     bot.answerCallbackQuery(query.id, { text: 'Шаблон отправлен!' });
   }
@@ -1586,7 +1463,7 @@ bot.on('message', (msg) => {
           `*Никнейм:* Ваш_Никнейм\n` +
           `*Товары:* Ваши_Товары\n` +
           `*Координаты:* x y z\n` +
-          `*Дата оформление доставки:* 28/11/2024\n\n` +
+          `*Дата оформление доставки:* 08/12/2024\n\n` +
           `Сообщение должно строго соответствовать формату!`,
         { parse_mode: 'Markdown' }
       );
@@ -1717,3 +1594,110 @@ bot.onText(/\/start/, (msg) => {
   });
 })
 
+
+// Команда: /report_fine — Отчет по штрафам
+bot.onText(/\/report_fine/, (msg) => {
+  const chatId = msg.chat.id;
+
+  if (!isWorker(chatId)) {
+    bot.sendMessage(chatId, '🛑 Эта команда доступна только для сотрудников.');
+    return;
+  }
+
+  const { totalFines, totalPaid, totalCancelled, totalUnpaidAmount } = getFineStatistics();
+
+  const report = `📊 Отчет по штрафам:\n\n` +
+                 `- Всего выписано штрафов: ${totalFines}\n` +
+                 `- Оплачено штрафов: ${totalPaid}\n` +
+                 `- Аннулировано штрафов: ${totalCancelled}\n` +
+                 `- Сумма неоплаченных штрафов: ${totalUnpaidAmount} ар\n`;
+
+  bot.sendMessage(chatId, report, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '🔍 Топ должников', callback_data: 'top_debtors' }],
+        [{ text: '❌ Закрыть', callback_data: 'close_report' }],
+      ],
+    },
+  });
+});
+
+// Команда: /top_debtors — Топ должников
+bot.onText(/\/top_debtors/, (msg) => {
+  const chatId = msg.chat.id;
+
+  if (!isWorker(chatId)) {
+    bot.sendMessage(chatId, '🛑 Эта команда доступна только для сотрудников.');
+    return;
+  }
+
+  const debtors = getTopDebtors();
+
+  const response = debtors.length > 0
+    ? '📋 Топ должников:\n\n' + debtors.map((debtor, i) => `${i + 1}. ${debtor.username}: ${debtor.amount} ар`).join('\n')
+    : '✅ Все пользователи оплатили свои штрафы.';
+
+  bot.sendMessage(chatId, response, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '📊 Отчет по штрафам', callback_data: 'fine_report' }],
+        [{ text: '❌ Закрыть', callback_data: 'close_report' }],
+      ],
+    },
+  });
+});
+
+// Callback обработчик кнопок
+bot.on('callback_query', (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data === 'close_report') {
+    bot.deleteMessage(chatId, callbackQuery.message.message_id).catch(() => {});
+  } else if (data === 'fine_report') {
+    bot.deleteMessage(chatId, callbackQuery.message.message_id).catch(() => {});
+    bot.sendMessage(chatId, '/report_fine'); // Вызов отчета
+  } else if (data === 'top_debtors') {
+    bot.deleteMessage(chatId, callbackQuery.message.message_id).catch(() => {});
+    bot.sendMessage(chatId, '/top_debtors'); // Вызов топа должников
+  }
+
+  bot.answerCallbackQuery(callbackQuery.id);
+});
+
+// Вспомогательные функции
+function getFineStatistics() {
+  let totalFines = 0;
+  let totalPaid = 0;
+  let totalCancelled = 0;
+  let totalUnpaidAmount = 0;
+
+  for (const userId in fines) {
+    const userFines = fines[userId] || [];
+    userFines.forEach((fine) => {
+      totalFines++;
+      if (fine.paid) totalPaid++;
+      else if (fine.cancelled) totalCancelled++;
+      else totalUnpaidAmount += fine.amount;
+    });
+  }
+
+  return { totalFines, totalPaid, totalCancelled, totalUnpaidAmount };
+}
+
+function getTopDebtors() {
+  const debtors = [];
+
+  for (const userId in fines) {
+    const userFines = fines[userId] || [];
+    const unpaidAmount = userFines
+      .filter(fine => !fine.paid && !fine.cancelled)
+      .reduce((sum, fine) => sum + fine.amount, 0);
+
+    if (unpaidAmount > 0) {
+      debtors.push({ username: users[userId]?.username || `ID: ${userId}`, amount: unpaidAmount });
+    }
+  }
+
+  return debtors.sort((a, b) => b.amount - a.amount).slice(0, 10);
+}
