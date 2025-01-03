@@ -4,6 +4,11 @@
     "balance": 0,
     "role": "user"
   },
+  "1080483185": {
+    "username": "@GAMEPRO2016",
+    "balance": 0,
+    "role": "worker"
+  },
   "1378783537": {
     "username": "@Tovslo",
     "balance": 0,
@@ -36,8 +41,8 @@
   },
   "7886273686": {
     "username": "@username",
-    "balance": 1,
-    "role": "user"
+    "balance": 0,
+    "role": "worker"
   },
   "6343971096": {
     "username": "@mak097",
@@ -47,7 +52,7 @@
   "7045248304": {
     "username": "@Zakatu",
     "balance": 0,
-    "role": "worker"
+    "role": "user"
   },
   "7212098470": {
     "username": "@KOTLETKAOTAKU",
@@ -62,11 +67,16 @@
   "6372709329": {
     "username": "@Zakatiran",
     "balance": 0,
+    "role": "user"
+  },
+  "6652988854": {
+    "username": "@MrJong",
+    "balance": 0,
     "role": "worker"
   },
-  "1080483185": {
-   "username": "@GAMEPRO2016",
-   "balance": 0,
-   "role": "user"
+  "6095395520": {
+    "username": "@MrZepyxa",
+    "balance": 0,
+    "role": "user"
   }
 }
