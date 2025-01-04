@@ -1276,11 +1276,8 @@ if (fs.existsSync(deliveriesFile)) {
 
 // Сохраняем данные в файл
 function saveDeliveries() {
-  fs.writeFileSync(deliveriesFile, JSON.stringify(deliveries, null, 2));
+  fs.writeFileSync(deliveriesFile, JSON.stringify(deliveries, null, 2), 'utf-8');
 }
-
-
-
 
 // Загружаем данные о доставках
 function loadDeliveries() {
@@ -1289,11 +1286,6 @@ function loadDeliveries() {
     return JSON.parse(data);
   }
   return [];
-}
-
-// Сохраняем данные о доставках
-function saveDeliveries() {
-  fs.writeFileSync(deliveriesFile, JSON.stringify(deliveries, null, 2), 'utf-8');
 }
 
 // Загружаем заявки при старте
@@ -1306,6 +1298,14 @@ const deliveryAttempts = {};
 const deliveryFormatRegex =
   /Никнейм:\s*(.+)\nТовары:\s*(.+)\nКоординаты:\s*(.+)\nДата оформление доставки:\s*(\d{2}\/\d{2}\/\d{4})/;
 
+// Функция для получения текущей даты в формате DD/MM/YYYY
+function getCurrentDate() {
+  const today = new Date();
+  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = today.getFullYear();
+  return `${day}/${month}/${year}`;
+}
 
 // Команда /оформить_доставку
 bot.onText(/\/оформить_доставку/, (msg) => {
@@ -1314,15 +1314,20 @@ bot.onText(/\/оформить_доставку/, (msg) => {
   // Сбрасываем счетчик ошибок
   deliveryAttempts[chatId] = 0;
 
-  // Текст шаблона
+  // Текст шаблона с текущей датой
   const deliveryTemplate =
-    `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: 08/12/2024`;
+    `Никнейм: 
+Товары: 
+Координаты: x y z
+Дата оформление доставки: ${getCurrentDate()}`;
 
   // Отправляем сообщение с инструкцией
   bot.sendMessage(
     chatId,
     `Чтобы оформить доставку, заполните анкету по следующему образцу:\n\n` +
       `*Образец:*\n\n${deliveryTemplate}\n\n` +
+      `📌 Важно: Товары, пожалуйста, разделяйте запятыми.\n` + 
+      `📌 Важно: Если товар не доставляется, а выдается (например, команды /co i, /co near, /v или префикс), в поле координат указывайте нули.\n\n` +
       `Сообщение должно строго соответствовать формату!`,
     {
       parse_mode: 'Markdown',
@@ -1347,7 +1352,10 @@ bot.on('callback_query', (query) => {
   if (query.data === 'copy_delivery_template') {
     // Отправляем текст шаблона пользователю для копирования
     const deliveryTemplate =
-      `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: 08/12/2024`;
+      `Никнейм: 
+Товары: 
+Координаты: x y z
+Дата оформление доставки: ${getCurrentDate()}`;
     bot.sendMessage(chatId, deliveryTemplate, { parse_mode: 'Markdown' });
     bot.answerCallbackQuery(query.id, { text: 'Шаблон отправлен!' });
   }
@@ -1363,14 +1371,25 @@ bot.on('message', (msg) => {
 
   // Проверяем, соответствует ли сообщение формату
   if (deliveryFormatRegex.test(text)) {
+    const match = text.match(deliveryFormatRegex);
+    const nickname = match[1].trim();
+
+    if (!nickname) {
+      bot.sendMessage(
+        chatId,
+        `❌ Поле "Никнейм" не должно быть пустым. Заполните анкету по образцу!`
+      );
+      return;
+    }
+
     deliveryAttempts[chatId] = 0; // Сбрасываем счетчик
 
-    const match = text.match(deliveryFormatRegex);
     const deliveryData = {
-      nickname: match[1].trim(),
+      nickname: nickname,
       items: match[2].trim(),
       coordinates: match[3].trim(),
       date: match[4].trim(),
+      chatId: chatId, // Сохраняем ID чата отправителя
     };
 
     // Добавляем данные в список доставок и сохраняем
@@ -1395,7 +1414,7 @@ bot.on('message', (msg) => {
             [
               {
                 text: 'Подтвердить доставку',
-                callback_data: `confirm_${deliveryData.nickname}`,
+                callback_data: `confirm_${nickname}`,
               },
             ],
           ],
@@ -1418,9 +1437,9 @@ bot.on('message', (msg) => {
         chatId,
         `❌ Сообщение не соответствует формату.\n\n*Образец:*\n\n` +
           `*Никнейм:* Ваш_Никнейм\n` +
-          `*Товары:* Ваши_Товары\n` +
+          `*Товары:* примерный список товаров\n` +
           `*Координаты:* x y z\n` +
-          `*Дата оформление доставки:* 08/12/2024\n\n` +
+          `*Дата оформление доставки:* ${getCurrentDate()}\n\n` +
           `Сообщение должно строго соответствовать формату!`,
         { parse_mode: 'Markdown' }
       );
@@ -1435,16 +1454,15 @@ bot.on('callback_query', (callbackQuery) => {
   if (data.startsWith('confirm_')) {
     const nickname = data.split('_')[1];
 
+    // Находим заявку по никнейму
+    const delivery = deliveries.find((delivery) => delivery.nickname === nickname);
+
     // Удаляем заявку
     deliveries = deliveries.filter((delivery) => delivery.nickname !== nickname);
     saveDeliveries();
 
-    // Уведомляем администратора и игрока
+    // Уведомляем администратора
     bot.sendMessage(adminChatId, `✅ Доставка для ${nickname} подтверждена.`);
-    bot.sendMessage(
-      callbackQuery.from.id,
-      `✅  для пользователя ${nickname} было успешно выполнена!`
-    );
 
     // Убираем кнопку из сообщения
     bot.editMessageReplyMarkup(
@@ -1453,8 +1471,17 @@ bot.on('callback_query', (callbackQuery) => {
     );
 
     bot.answerCallbackQuery(callbackQuery.id, { text: 'Доставка подтверждена!' });
+
+    // Отправляем уведомление пользователю, который отправил заявку
+    if (delivery) {
+      bot.sendMessage(
+        delivery.chatId,
+        `📦 Ваша заявка на доставку была успешно выполнена. Спасибо за использование нашего бота!`
+      );
+    }
   }
 });
+
 
 bot.onText(/\/submit_case/, (msg) => {
   const chatId = msg.chat.id;
@@ -1658,3 +1685,5 @@ function getTopDebtors() {
 
   return debtors.sort((a, b) => b.amount - a.amount).slice(0, 10);
 }
+
+  
