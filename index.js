@@ -1435,7 +1435,7 @@ bot.on('message', (msg) => {
       delete deliveryAttempts[chatId];
       bot.sendMessage(
         chatId,
-        `❌ Трижды введено сообщение не по образцу. Попробуйте снова, начав с команды /оформить_доставку.`
+        `❌ Трижды введено сообщение не по образцу. Попробуйте снова, начав с команды /oformit_dostavky.`
       );
     } else {
       bot.sendMessage(
@@ -1570,7 +1570,7 @@ bot.onText(/\/start/, (msg) => {
   const message = `Привет! Добро пожаловать в бота! Используйте встроенную клавиатуру ниже для выбора команды.\n\n` +
   `Информация о боте: /info\n` +
   `Подать дело в суд: /submit_case\n` +
-  `Доставка: /оформить_доставку \n` +
+  `Доставка: /oformit_dostavky \n` +
   `Регистрация: /register @username\n`;
 
   bot.sendMessage(chatId, message, {
