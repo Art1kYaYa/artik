@@ -1435,7 +1435,7 @@ bot.on('message', (msg) => {
       delete deliveryAttempts[chatId];
       bot.sendMessage(
         chatId,
-        `❌ Трижды введено сообщение не по образцу. Попробуйте снова, начав с команды /oformit_dostavky.`
+        `❌ Трижды введено сообщение не по образцу. Попробуйте снова, начав с команды /оформить_доставку.`
       );
     } else {
       bot.sendMessage(
@@ -1570,7 +1570,7 @@ bot.onText(/\/start/, (msg) => {
   const message = `Привет! Добро пожаловать в бота! Используйте встроенную клавиатуру ниже для выбора команды.\n\n` +
   `Информация о боте: /info\n` +
   `Подать дело в суд: /submit_case\n` +
-  `Доставка: /oformit_dostavky \n` +
+  `Доставка: /оформить_доставку \n` +
   `Регистрация: /register @username\n`;
 
   bot.sendMessage(chatId, message, {
@@ -1807,4 +1807,50 @@ bot.onText(/\/all/, (msg) => {
 
     const response = usersWithHistory.join('\n');
     bot.sendMessage(userId, `Пользователи с записями:\n${response}`);
+});
+
+
+
+
+
+// Массив известных команд
+const knownCommands = [
+  '/start',
+  '/help',
+  '/order_delivery',
+  '/оформить_доставку',
+  '/contact',
+  `/all`,
+  `/history`,
+  `/clear`,
+  `/add`,
+  `/info`,
+  `/top_debtors`,
+  `/check_fines`,
+  `/archive`,
+  `/list`,
+  `/fine`,
+  `/notify_debtors`,
+  `/check_user_fines`,
+  `/report_fine`,
+  `/remove_worker`,
+  `/add_worker`,
+  `/list_payments`,
+  `/submit_case`,
+  `/register`
+];
+
+// Обработчик всех сообщений
+bot.on('message', (msg) => {
+  const chatId = msg.chat.id;
+
+  // Проверяем, начинается ли сообщение с "/"
+  if (msg.text.startsWith('/')) {
+    // Проверяем, есть ли команда в списке известных
+    if (!knownCommands.includes(msg.text.split(' ')[0])) {
+      bot.sendMessage(chatId, 'Неизвестная команда. Введите /help для получения списка доступных команд.\n\n' +
+    'Возможно эта команда вам не доступна\n\n' +
+    'Или Артик забыл добавить это команду но это врядли...');
+    }
+  }
 });
