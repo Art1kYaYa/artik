@@ -68,17 +68,17 @@ bot.onText(/\/contact/, (msg) => {
   bot.sendMessage(
     chatId,
     `📞 Контактная информация:\n\n` +
-    `- Администрация бота: ArtikYaYa\n` +
-    `- Глава Налоговой: Serg03S\n` +
-    `- Глава ПСМ: N/A \n\n` +
+    `- Администрация бота: @NeArtikYaYa\n` +
+    `- Глава Налоговой: @Tovslo\n` +
+    `- Главы ПСМ: @mak097a\n\n` +
     `Мы рады вам помочь!`,
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Администрация бота', url: 'https://t.me/ArtikYaYa' }],
-          [{ text: 'Глава Налоговой', url: 'https://t.me/SergeySV0354' }],
+          [{ text: 'Администрация бота', url: 'https://t.me/NeArtikYaYa' }],
+          [{ text: 'Глава Налоговой', url: 'https://t.me/Tovslo' }],
           [
-            { text: 'Глава ПСМ: N/A', url: 'tg://settings' },
+            { text: 'Глава ПСМ 1', url: 'https://t.me/mak097a' },
           ],
           [{ text: '❌ Закрыть', callback_data: 'close_contact' }],
         ],
@@ -1306,6 +1306,7 @@ function getCurrentDate() {
   const year = today.getFullYear();
   return `${day}/${month}/${year}`;
 }
+// Дополнительно добавляем информацию о боте
 
 // Команда /оформить_доставку
 bot.onText(/\/оформить_доставку/, (msg) => {
@@ -1562,7 +1563,11 @@ bot.on('message', (msg) => {
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
-  const message = `Привет! Добро пожаловать в бота! Используйте встроенную клавиатуру ниже для выбора команды.`;
+  const message = `Привет! Добро пожаловать в бота! Используйте встроенную клавиатуру ниже для выбора команды.\n\n` +
+  `Информация о боте: /info\n` +
+  `Подать дело в суд: /submit_case\n` +
+  `Доставка: /оформить_доставку \n` +
+  `Регистрация: /register @username\n`;
 
   bot.sendMessage(chatId, message, {
     reply_markup: {
@@ -1685,5 +1690,117 @@ function getTopDebtors() {
 
   return debtors.sort((a, b) => b.amount - a.amount).slice(0, 10);
 }
+bot.onText(/\/info/, (msg) => {
+  const chatId = msg.chat.id;
+  const infoMessage = 
+    `🤖 <b>Информация о боте:</b>\n\n` +
+    `Этот бот помогает оформить быструю доставку товаров или узнать штрафы (возможно временно не актуально). Для оформления заказа используйте команду /оформить_доставку и заполните анкету по указанному образцу.\n` + 
+    `Другие команды доступны по команде /help.\n\n` +
+    `Если у вас возникнут вопросы, напишите в Артику(@ArtikYaYa). Спасибо за использование нашего сервиса!`;
 
-  
+  bot.sendMessage(chatId, infoMessage, { parse_mode: "HTML" });
+});
+
+
+// Разрешённые ID пользователей для ограниченных команд
+const allowedUserIds = [6343971096, 2030128216];
+
+// Имя файла для хранения данных
+const HISTORY_FILE = 'userHistory.json';
+
+// Объект для хранения истории пользователей
+let userHistory = {};
+
+// Загрузка истории из файла
+function loadHistory() {
+    if (fs.existsSync(HISTORY_FILE)) {
+        const data = fs.readFileSync(HISTORY_FILE, 'utf-8');
+        userHistory = JSON.parse(data);
+    }
+}
+
+// Сохранение истории в файл
+function saveHistory() {
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(userHistory, null, 2));
+}
+
+// Загрузить историю при запуске
+loadHistory();
+
+// Проверка доступа к ограниченным командам
+function isAllowed(userId) {
+    return allowedUserIds.includes(userId);
+}
+
+// Команда /add для добавления записи другому пользователю
+bot.onText(/\/add (\d+) (.+)/, (msg, match) => {
+    const userId = msg.from.id;
+
+    if (!isAllowed(userId)) {
+        return bot.sendMessage(userId, 'У вас нет доступа к этой команде.');
+    }
+
+    const targetUserId = parseInt(match[1], 10); // ID целевого пользователя
+    const message = match[2]; // Сообщение
+
+    if (!userHistory[targetUserId]) {
+        userHistory[targetUserId] = [];
+    }
+
+    userHistory[targetUserId].push(message);
+    saveHistory(); // Сохраняем изменения в файл
+    bot.sendMessage(userId, `Запись добавлена для пользователя ${targetUserId}:\n"${message}"`);
+});
+
+// Команда /history для просмотра истории определённого пользователя
+bot.onText(/\/history (\d+)/, (msg, match) => {
+    const userId = msg.from.id;
+
+    if (!isAllowed(userId)) {
+        return bot.sendMessage(userId, 'У вас нет доступа к этой команде.');
+    }
+
+    const targetUserId = parseInt(match[1], 10); // ID целевого пользователя
+    const history = userHistory[targetUserId] || [];
+
+    if (history.length === 0) {
+        return bot.sendMessage(userId, `У пользователя ${targetUserId} нет записей.`);
+    }
+
+    const historyText = history.map((item, index) => `${index + 1}. ${item}`).join('\n');
+    bot.sendMessage(userId, `История пользователя ${targetUserId}:\n${historyText}`);
+});
+
+// Команда /clear для очистки истории определённого пользователя
+bot.onText(/\/clear (\d+)/, (msg, match) => {
+    const userId = msg.from.id;
+
+    if (!isAllowed(userId)) {
+        return bot.sendMessage(userId, 'У вас нет доступа к этой команде.');
+    }
+
+    const targetUserId = parseInt(match[1], 10); // ID целевого пользователя
+    userHistory[targetUserId] = [];
+    saveHistory(); // Сохраняем изменения в файл
+    bot.sendMessage(userId, `История пользователя ${targetUserId} очищена.`);
+});
+
+// Команда /all для просмотра всех пользователей с историей
+bot.onText(/\/all/, (msg) => {
+    const userId = msg.from.id;
+
+    if (!isAllowed(userId)) {
+        return bot.sendMessage(userId, 'У вас нет доступа к этой команде.');
+    }
+
+    const usersWithHistory = Object.keys(userHistory)
+        .filter((id) => userHistory[id] && userHistory[id].length > 0)
+        .map((id) => `ID: ${id}, Записей: ${userHistory[id].length}`);
+
+    if (usersWithHistory.length === 0) {
+        return bot.sendMessage(userId, 'Ни у одного пользователя нет записей.');
+    }
+
+    const response = usersWithHistory.join('\n');
+    bot.sendMessage(userId, `Пользователи с записями:\n${response}`);
+});
