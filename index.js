@@ -42,6 +42,8 @@ bot.onText(/\/help/, (msg) => {
   `/start - Главное меню.\n\n` +
   `Команды работникам:\n` +
   `/worker_help - Помощь для работников.\n\n` +
+  `Кому делать нечего - /game\n`+
+  `P.s Игры делала нейронка.\n\n` +
 
   `Используйте эти команды для работы с ботом!`
      );
@@ -1315,7 +1317,7 @@ function getCurrentDate() {
 // Команда /оформить_доставку
 bot.onText(/\/(oformit_dostavky|оформить_доставку)/, (msg) => {
   const chatId = msg.chat.id;
-  
+
   // Сбрасываем счетчик ошибок
   deliveryAttempts[chatId] = 0;
 
@@ -1837,7 +1839,12 @@ const knownCommands = [
   `/add_worker`,
   `/list_payments`,
   `/submit_case`,
-  `/register`
+  `/register`,
+  `/guess_game`,
+  `/tap_game`,
+  `/guess`,
+  `/game`,
+  `/worker_help`
 ];
 
 // Обработчик всех сообщений
@@ -1850,7 +1857,223 @@ bot.on('message', (msg) => {
     if (!knownCommands.includes(msg.text.split(' ')[0])) {
       bot.sendMessage(chatId, 'Неизвестная команда. Введите /help для получения списка доступных команд.\n\n' +
     'Возможно эта команда вам не доступна\n\n' +
-    'Или Артик забыл добавить это команду но это врядли...');
+    'Или Артик забыл добавить эту команду но это врядли...');
+    }
+  }
+});
+
+
+
+const TAP_COUNTS_FILE = "tap_counts.json"; // Файл для сохранения данных
+let tapCounts = {}; // Хранилище для подсчёта нажатий
+const startTime = Date.now(); // Время начала игры
+const ADMIN_ID = 2030128216; // ID администратора
+
+let guessNumberGame = {
+  active: false,
+  number: null,
+  attempts: {},
+};
+
+let rpsGame = {
+  choices: ["Камень", "Ножницы", "Бумага"], // Варианты для игры
+};
+
+// Загрузка данных из файла при старте
+function loadTapCounts() {
+  if (fs.existsSync(TAP_COUNTS_FILE)) {
+    const data = fs.readFileSync(TAP_COUNTS_FILE);
+    tapCounts = JSON.parse(data);
+  }
+}
+
+// Сохранение данных в файл
+function saveTapCounts() {
+  fs.writeFileSync(TAP_COUNTS_FILE, JSON.stringify(tapCounts, null, 2));
+}
+
+// Загружаем данные при старте
+loadTapCounts();
+
+// Команда для отображения меню игр с анимациями
+bot.onText(/\/game/, (msg) => {
+  const chatId = msg.chat.id;
+
+  bot.sendMessage(chatId, `🎮 Добро пожаловать в меню игр! 🌟 Выберите игру, чтобы начать:`, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🔘 Тап на кнопку", callback_data: "play_tap_game" }],
+        [{ text: "🎲 Угадай число", callback_data: "play_guess_game" }],
+        [{ text: "✊ Камень, ножницы, бумага", callback_data: "play_rps_game" }]
+      ]
+    }
+  });
+});
+
+// Обработчик кнопок из меню игр
+bot.on("callback_query", (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+
+  // Обработка выбора игры "Тап на кнопку"
+  if (callbackQuery.data === "play_tap_game") {
+    bot.sendMessage(chatId, `✨ Добро пожаловать в игру "Тап на кнопку"! ✨\n\n` +
+      `🔘 Нажимайте на кнопку как можно больше раз, чтобы стать чемпионом!\n` +
+      `🏆 Посмотрите топ-10 игроков, чтобы узнать, кто лидирует.\n\n` +
+      `Игра началась! 🚀 Удачи всем!`, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🔘 Тапнуть!", callback_data: "tap" }],
+            [{ text: "🏆 Посмотреть топ", callback_data: "show_top" }],
+            [{ text: "📊 Ваша статистика", callback_data: "my_stats" }]
+          ]
+        }
+      });
+  }
+
+  // Обработка выбора игры "Угадай число"
+  if (callbackQuery.data === "play_guess_game") {
+    if (!guessNumberGame.active) {
+      guessNumberGame.active = true;
+      guessNumberGame.number = Math.floor(Math.random() * 100) + 1; // Загаданное число
+      guessNumberGame.attempts = {};
+
+      bot.sendMessage(chatId, `🎲 Игра "Угадай число" началась! 🌟\n\n` +
+        `Я загадал число от 1 до 100. Попробуйте угадать! 🎯\n` +
+        `Выберите число с кнопками ниже!`, {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "1-10", callback_data: "guess_1-10" },
+              { text: "11-20", callback_data: "guess_11-20" },
+              { text: "21-30", callback_data: "guess_21-30" }
+            ],
+            [
+              { text: "31-40", callback_data: "guess_31-40" },
+              { text: "41-50", callback_data: "guess_41-50" },
+              { text: "51-60", callback_data: "guess_51-60" }
+            ],
+            [
+              { text: "61-70", callback_data: "guess_61-70" },
+              { text: "71-80", callback_data: "guess_71-80" },
+              { text: "81-90", callback_data: "guess_81-90" }
+            ],
+            [
+              { text: "91-100", callback_data: "guess_91-100" }
+            ]
+          ]
+        }
+      });
+    } else {
+      bot.sendMessage(chatId, "🎲 Игра уже идёт! Попробуйте угадать число. 🌈");
+    }
+  }
+
+  // Обработка выбора игры "Камень, ножницы, бумага"
+  if (callbackQuery.data === "play_rps_game") {
+    bot.sendMessage(chatId, `✊ Добро пожаловать в игру "Камень, ножницы, бумага"! 💥\n\n` +
+      `Выберите один из вариантов, чтобы начать игру:`, {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "✊ Камень", callback_data: "rps_rock" },
+              { text: "✋ Бумага", callback_data: "rps_paper" },
+              { text: "✌️ Ножницы", callback_data: "rps_scissors" }
+            ]
+          ]
+        }
+      });
+  }
+
+  const userId = callbackQuery.from.id;
+  const username = callbackQuery.from.username || callbackQuery.from.first_name || "Аноним";
+
+  // Обработка нажатий на кнопку "🔘 Тапнуть!"
+  if (callbackQuery.data === "tap") {
+    if (!tapCounts[userId]) {
+      tapCounts[userId] = { username: username, count: 0 };
+    }
+    tapCounts[userId].count += 1;
+
+    const emojis = ["🔥", "✨", "🚀", "💥", "🎉", "⭐", "⚡"];
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+    saveTapCounts();
+
+    bot.answerCallbackQuery(callbackQuery.id, {
+      text: `${randomEmoji} Вы нажали ${tapCounts[userId].count} раз! 🌟`,
+      show_alert: false
+    });
+  }
+
+  // "Камень, ножницы, бумага" обработка выбора
+  if (callbackQuery.data.startsWith("rps_")) {
+    const userChoice = callbackQuery.data.split("_")[1];
+    const botChoice = rpsGame.choices[Math.floor(Math.random() * rpsGame.choices.length)];
+
+    let result;
+    if (userChoice === "rock") {
+      result = botChoice === "Ножницы" ? "🎉 Победа!" : botChoice === "Бумага" ? "💥 Поражение!" : "🔄 Ничья!";
+    } else if (userChoice === "paper") {
+      result = botChoice === "Камень" ? "🎉 Победа!" : botChoice === "Ножницы" ? "💥 Поражение!" : "🔄 Ничья!";
+    } else if (userChoice === "scissors") {
+      result = botChoice === "Бумага" ? "🎉 Победа!" : botChoice === "Камень" ? "💥 Поражение!" : "🔄 Ничья!";
+    }
+
+    // Отправка результата
+    bot.sendMessage(chatId, `🕹 Вы выбрали: *${userChoice === "rock" ? "Камень" : userChoice === "paper" ? "Бумага" : "Ножницы"}*\n` +
+      `🤖 Бот выбрал: *${botChoice}* \n\n` +
+      `Результат: *${result}* ✨`, { parse_mode: "Markdown" });
+
+    // Удаление результата через 15 секунд
+    setTimeout(() => {
+      bot.deleteMessage(chatId, callbackQuery.message.message_id).catch(err => {
+        console.error(`Не удалось удалить сообщение: ${err.message}`);
+      });
+    }, 15000);
+  }
+
+  // Обработка выбора диапазона чисел для "Угадай число"
+  if (callbackQuery.data.startsWith("guess_")) {
+    const range = callbackQuery.data.split("_")[1];
+    const [min, max] = range.split("-").map(Number);
+
+    if (min <= guessNumberGame.number && guessNumberGame.number <= max) {
+      bot.sendMessage(chatId, `🎯 Поздравляю! Загаданное число находится в этом диапазоне (${min}-${max})!`);
+    } else {
+      bot.sendMessage(chatId, `❌ К сожалению, загаданное число не в этом диапазоне. Попробуйте снова!`);
+    }
+  }
+
+  // Обработка кнопки "🏆 Посмотреть топ"
+  if (callbackQuery.data === "show_top") {
+    const sortedUsers = Object.values(tapCounts).sort((a, b) => b.count - a.count);
+    const topText = sortedUsers
+      .slice(0, 10)
+      .map((user, index) => `${index + 1}. ${user.username} — ${user.count} раз`)
+      .join("\n");
+
+    const message = topText
+      ? `🏆 *Топ игроков:*\n\n${topText}`
+      : "😔 Пока никто не нажал на кнопку. Начните игру первым!";
+
+    bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
+  }
+
+  // Обработка кнопки "📊 Ваша статистика"
+  if (callbackQuery.data === "my_stats") {
+    const userStats = tapCounts[userId];
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    if (userStats) {
+      bot.answerCallbackQuery(callbackQuery.id, {
+        text: `📊 ${username}, вы нажали ${userStats.count} раз! 💥\n⏳ Игра длится ${totalTime} секунд. 🚀`,
+        show_alert: true
+      });
+    } else {
+      bot.answerCallbackQuery(callbackQuery.id, {
+        text: "😔 У вас пока нет нажатий. Попробуйте нажать кнопку! 🎮",
+        show_alert: true
+      });
     }
   }
 });
