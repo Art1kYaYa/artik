@@ -68,17 +68,20 @@ bot.onText(/\/contact/, (msg) => {
   bot.sendMessage(
     chatId,
     `📞 Контактная информация:\n\n` +
-    `- Администрация бота: @NeArtikYaYa\n` +
-    `- Глава Налоговой: @Tovslo\n` +
-    `- Главы ПСМ: @mak097a\n\n` +
+    `- Администрация бота: @ArtikYaYa\n` +
+    `- Глава Налоговой: Serg03S\n` +
+    `- Главы ПСМ: mak097\n` +
+    `- Администраторы "Меда":\n  • KenD_Live\n  • OPTIMUS_PM\n\n` +
     `Мы рады вам помочь!`,
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Администрация бота', url: 'https://t.me/NeArtikYaYa' }],
-          [{ text: 'Глава Налоговой', url: 'https://t.me/Tovslo' }],
+          [{ text: 'Администрация бота', url: 'https://t.me/ArtikYaYa' }],
+          [{ text: 'Глава Налоговой', url: 'https://t.me/SergeySV0354' }],
+          [{ text: 'Глава ПСМ 1', url: 'https://t.me/mak097a' }],
           [
-            { text: 'Глава ПСМ 1', url: 'https://t.me/mak097a' },
+            { text: 'Администратор "Меда" KenD_Live', url: 'https://t.me/KenDyxa' },
+            { text: 'Администратор "Меда" OPTIMUS_PM', url: 'https://t.me/optms4' },
           ],
           [{ text: '❌ Закрыть', callback_data: 'close_contact' }],
         ],
