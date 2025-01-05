@@ -90,6 +90,7 @@ bot.onText(/\/contact/, (msg) => {
   );
 });
 
+
 // Обработка кнопки "Закрыть"
 bot.on('callback_query', (callbackQuery) => {
   const chatId = callbackQuery.message.chat.id;
@@ -1312,9 +1313,9 @@ function getCurrentDate() {
 // Дополнительно добавляем информацию о боте
 
 // Команда /оформить_доставку
-bot.onText(/\/оформить_доставку/, (msg) => {
+bot.onText(/\/(oformit_dostavky|оформить_доставку)/, (msg) => {
   const chatId = msg.chat.id;
-
+  
   // Сбрасываем счетчик ошибок
   deliveryAttempts[chatId] = 0;
 
