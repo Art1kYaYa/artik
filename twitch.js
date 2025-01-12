@@ -20,15 +20,17 @@ client.connect().catch((err) => {
     console.error('Ошибка подключения к Twitch:', err);
 });
 
-// Сообщение-ответ для фразы о сервере
-const responseMessage = `Чтобы поиграть с MishanYaMine на его ПРИВАТНОМ РП СЕРВЕРЕ, нужно оплатить проходку которая стоит ВСЕГО 199 Рублей, ЛИБО НАКОПИТЬ 1К БАЛЛОВ НА МОЕМ ТВИЧ КАНАЛЕ. ПОСЛЕ ОПЛАТЫ напиши мне в VK - https://vk.com/mishanyaya2222`;
-
-// Сообщение для трансляции
-const broadcastMessage = `Подпишитесь на телеграмм канал MishanYaMine - https://t.me/+dt8Sh8x762FmYWYy`;
+// Сообщения для случайной отправки
+const randomMessages = [
+    `Подпишитесь на телеграмм канал MishanYaMine - https://t.me/+dt8Sh8x762FmYWYy`,
+    `Группа ВКонтакте MishanYaMine - https://vk.com/mishanyayasubtop`,
+    `Подпишитесь на YouTube-канал MishanYaMine - https://youtube.com/channel/UCL0D1BXNuwPaqbsFO7KBJ1g?si=sLFOvhrbNMu0pwj_`,
+    `Поддержите MishanYaMine донатом - https://www.donationalerts.com/r/mihadred`
+];
 
 // Ключевые фразы для триггера сервера
 const keywords = [
-    '! server', '!server', '! сервер'
+    '! server', '!server', '! сервер', '!сервер', '!сервер?', '!server?', '! сервер?', '! server?'
 ];
 
 // Ключевые фразы для триггера сообщений о сервере
@@ -61,44 +63,62 @@ const triggerPhrases = [
     'Какой сервер у тебя?',
     'Привет можно поиграть?',
     'Шо за сервер?',
-    'А как на сервер попасть?'
+    'А как на сервер попасть?',
+    'Как попасть на ваш сервер?',
+    'Как работает сервер?',
+    'Где найти сервер?',
+    'Можно ли присоединиться к серверу?',
+    'Как войти на сервер?',
+    'Можно IP сервера?',
+    'Что нужно, чтобы войти на сервер?',
+    'Как называется сервер?',
+    'Скинь IP сервера',
+    'Скиньте сервер',
+    'Какой у вас сервер?',
+    'Сервер открытый?',
+    'Как играть с вами на сервере?',
+    'Какие условия для входа на сервер?',
+    'Как добавить сервер?',
+    'Доступ к серверу',
+    'Как включить сервер?',
+    'Как зарегистрироваться на сервере?',
+    'Скинь данные для входа на сервер'
 ];
 
-// Ключевые фразы для приветствия
-const greetings = ['ку', 'привет', 'здарова', 'hi', 'hello', 'хай', 'салам', 'САЛАМ'];
+// Функция для выбора случайного сообщения
+function getRandomMessage() {
+    const randomIndex = Math.floor(Math.random() * randomMessages.length);
+    return randomMessages[randomIndex];
+}
 
-// Время задержки между ответами (в миллисекундах)
-const delayTime = 10000; // 10 секунд
-let lastMessageTime = 0; // Время последнего отправленного сообщения
-
-// Устанавливаем интервал для повторной отправки сообщения
+// Отправка случайного сообщения каждые 3 минуты
 setInterval(() => {
-    client.say(opts.channels[0], broadcastMessage);
+    const message = getRandomMessage();
+    client.say(opts.channels[0], message);
+    console.log(`Отправлено случайное сообщение: ${message}`);
 }, 3 * 60 * 1000); // Каждые 3 минуты
 
 // Обработка сообщений в чате
 client.on('message', (channel, tags, message, self) => {
     if (self) return; // Игнорируем сообщения от самого бота
 
-    // Приводим сообщение к нижнему регистру для корректной проверки
+    // Приводим сообщение к нижнему регистру для проверки
     const lowerCaseMessage = message.toLowerCase();
 
-    // Проверяем, прошло ли достаточно времени с последнего сообщения
-    const currentTime = Date.now();
-    if (currentTime - lastMessageTime < delayTime) {
-        return; // Если прошло меньше 10 секунд, игнорируем сообщение
-    }
+    // Сообщение-ответ для фразы о сервере
+    const responseMessage = `Чтобы поиграть с MishanYaMine на его ПРИВАТНОМ РП СЕРВЕРЕ, нужно оплатить проходку которая стоит ВСЕГО 199 Рублей, ЛИБО НАКОПИТЬ 1К БАЛЛОВ НА МОЕМ ТВИЧ КАНАЛЕ. ПОСЛЕ ОПЛАТЫ напиши мне в VK - https://vk.com/mishanyaya2222`;
 
     // Проверяем ключевые слова для фразы о сервере
     if (keywords.some(keyword => lowerCaseMessage.includes(keyword)) || triggerPhrases.some(phrase => lowerCaseMessage.includes(phrase.toLowerCase()))) {
         client.say(channel, responseMessage);
-        lastMessageTime = currentTime; // Обновляем время последнего сообщения
     }
+
+    // Ключевые фразы для приветствия
+    const greetings = ['ку', 'привет', 'здарова', 'hi', 'hello', 'хай', 'салам', 'САЛАМ'];
 
     // Проверяем ключевые фразы для приветствия
     if (greetings.some(greeting => lowerCaseMessage.split(/\s+/).includes(greeting))) {
         client.say(channel, `Добро пожаловать на стрим, ${tags.username}!`);
-        lastMessageTime = currentTime; // Обновляем время последнего сообщения
     }
 });
 
