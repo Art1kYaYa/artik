@@ -58,8 +58,7 @@ const triggerPhrases = [
     'Как начать играть на сервере?',
     'Что нужно, чтобы зайти?',
     'Можно ли подключиться?',
-    'Какой сервер у тебя?',
-    'Шо за сервер?'
+    'Какой сервер у тебя?'
 ];
 
 // Ключевые фразы для приветствия
@@ -94,7 +93,7 @@ client.on('message', (channel, tags, message, self) => {
     }
 
     // Проверяем ключевые фразы для приветствия
-    if (greetings.includes(lowerCaseMessage)) {
+    if (greetings.some(greeting => lowerCaseMessage.split(/\s+/).includes(greeting))) {
         client.say(channel, `Добро пожаловать на стрим, ${tags.username}!`);
         lastMessageTime = currentTime; // Обновляем время последнего сообщения
     }
