@@ -25,7 +25,8 @@ const randomMessages = [
     `Подпишитесь на телеграмм канал MishanYaMine - https://t.me/+dt8Sh8x762FmYWYy`,
     `Группа ВКонтакте MishanYaMine - https://vk.com/mishanyayasubtop`,
     `Подпишитесь на YouTube-канал MishanYaMine - https://youtube.com/channel/UCL0D1BXNuwPaqbsFO7KBJ1g?si=sLFOvhrbNMu0pwj_`,
-    `Поддержите MishanYaMine донатом - https://www.donationalerts.com/r/mihadred`
+    `Поддержите MishanYaMine донатом - https://www.donationalerts.com/r/mihadred`,
+    `Сайт Сервера - https://servermishanyaya.easydonate.ru/`
 ];
 
 // Ключевые фразы для триггера сервера
