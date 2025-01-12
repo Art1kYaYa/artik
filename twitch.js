@@ -110,8 +110,9 @@ client.on('message', (channel, tags, message, self) => {
         client.say(channel, responseMessage);
     }
 
-    // Ключевые фразы для приветствия
-    const greetings = ['ку', 'привет', 'здарова', 'hi', 'hello', 'хай', 'салам', 'САЛАМ', 'куу, 'кууу', 'куууу', 'кууууу', 'кууууyу'];
+ // Ключевые фразы для приветствия
+const greetings = ['ку', 'привет', 'здарова', 'hi', 'hello', 'хай', 'салам', 'САЛАМ', 'куу', 'кууу', 'куууу', 'кууууу', 'куууууу'];
+
 
     // Проверяем ключевые фразы для приветствия
     if (greetings.some(greeting => lowerCaseMessage.split(/\s+/).includes(greeting))) {
