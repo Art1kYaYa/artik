@@ -4,8 +4,8 @@ const tmi = require('tmi.js');
 // Настройки бота
 const opts = {
     identity: {
-        username: 'artikyaya', // Имя вашего Twitch-бота
-        password: 'oauth:uu06j4l9bjfgn7h0kkd1sg6acszejw' // OAuth-токен для вашего бота
+        username: 'servermed_bot', // Имя вашего Twitch-бота
+        password: 'oauth:2lrso8utxczs3vmd5b335t9cx53bno' // OAuth-токен для вашего бота
     },
     channels: [
         'mishanyamine' // Канал, где бот будет активен
