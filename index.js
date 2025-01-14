@@ -1,4 +1,4 @@
-const TelegramBot = require('node-telegram-bot-api');
+\const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
 
 const token = '7758731240:AAHEtPHVTX-CfWqlwVk7zTim1_SwUHqFbcc';
@@ -28,6 +28,26 @@ function loadData(filename) {
 function saveData(filename, data) {
   fs.writeFileSync(filename, JSON.stringify(data, null, 2));
 }
+// Сообщение для приветствия
+const welcomeMessage = (name) => {
+  return `Добро пожаловать, ${name}! 🎉\n\n` +
+         `*Правила сервера:* [Ознакомиться](https://telegra.ph/Pravila-Servera-07-19-3)\n` +
+         `*Глобальная информация:* [Подробнее](https://telegra.ph/informaciya-07-19-64)\n` +
+         `*Twitch:* [mishanyamine](https://www.twitch.tv/mishanyamine)\n` +
+         `*Сайт сервера:* [Перейти](https://servermishanyaya.easydonate.ru/)\n` +
+         `*Подпишитесь на телеграмм канал:* [MishanYaMine](https://t.me/+dt8Sh8x762FmYWYy)`;
+};
+
+// Слушаем события добавления нового пользователя в чат
+bot.on('new_chat_members', (msg) => {
+  const newUser = msg.new_chat_members[0];
+  const userName = newUser.first_name || 'Пользователь'; // Используйте имя, если оно есть, или 'Пользователь'
+
+  bot.sendMessage(msg.chat.id, welcomeMessage(userName), { parse_mode: 'Markdown' });
+});
+bot.on('polling_error', (error) => {
+  console.log(error);  // Выведет подробности ошибки
+});
 
 // Команда /help
 bot.onText(/\/help/, (msg) => {
@@ -1575,18 +1595,7 @@ bot.onText(/\/start/, (msg) => {
   `Доставка: /оформить_доставку \n` +
   `Регистрация: /register @username\n`;
 
-  bot.sendMessage(chatId, message, {
-    reply_markup: {
-      keyboard: [
-        [{ text: '/submit_case' }], // Подать в суд
-        [{ text: '/register @username' }],    // Регистрация
-        [{ text: '/help' }],        // Помощь
-        [{ text: '/оформить_доставку' }], // Доставка
-      ],
-      resize_keyboard: true, // Адаптивная клавиатура
-      one_time_keyboard: false, // Клавиатура остается на экране
-    },
-  });
+
 })
 
 
@@ -1852,7 +1861,7 @@ bot.on('message', (msg) => {
   const chatId = msg.chat.id;
 
   // Проверяем, начинается ли сообщение с "/"
-  if (msg.text.startsWith('/')) {
+  if (msg.text && typeof msg.text === 'string' && msg.text.startsWith('/')) {
     // Проверяем, есть ли команда в списке известных
     if (!knownCommands.includes(msg.text.split(' ')[0])) {
       bot.sendMessage(chatId, 'Неизвестная команда. Введите /help для получения списка доступных команд.\n\n' +
