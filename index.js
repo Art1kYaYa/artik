@@ -1585,20 +1585,18 @@ bot.on('message', (msg) => {
     bot.sendMessage(chatId, '✅ Ваше заявление в суд успешно отправлено!');
   }
 });
-// Команда /start
-// Команда /start
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
   const message = `Привет! Добро пожаловать в бота! Используйте встроенную клавиатуру ниже для выбора команды.\n\n` +
-  `Информация о боте: /info\n` +
-  `Подать дело в суд: /submit_case\n` +
-  `Доставка: /оформить_доставку \n` +
-  `Регистрация: /register @username\n`;
+    `Информация о боте: /info\n` +
+    `Подать дело в суд: /submit_case\n` +
+    `Доставка: /оформить_доставку\n` +
+    `Регистрация: /register @username\n`;
 
-
-})
-
+  // Отправляем сообщение пользователю
+  bot.sendMessage(chatId, message);
+});
 
 // Команда: /report_fine — Отчет по штрафам
 bot.onText(/\/report_fine/, (msg) => {
