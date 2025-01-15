@@ -1594,8 +1594,12 @@ bot.onText(/\/start/, (msg) => {
     `Доставка: /оформить_доставку\n` +
     `Регистрация: /register @username\n`;
 
-  // Отправляем сообщение пользователю
-  bot.sendMessage(chatId, message);
+  // Удаляем клавиатуру и отправляем приветственное сообщение
+  bot.sendMessage(chatId, message, {
+    reply_markup: {
+      remove_keyboard: true,
+    },
+  });
 });
 
 // Команда: /report_fine — Отчет по штрафам
