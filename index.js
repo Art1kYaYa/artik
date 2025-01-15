@@ -34,7 +34,8 @@ const welcomeMessage = (name) => {
          `*Правила сервера:* [Ознакомиться](https://telegra.ph/Pravila-Servera-07-19-3)\n` +
          `*Глобальная информация:* [Подробнее](https://telegra.ph/informaciya-07-19-64)\n` +
          `*Twitch:* [mishanyamine](https://www.twitch.tv/mishanyamine)\n` +
-         `*Сайт сервера:* [Перейти](https://servermishanyaya.easydonate.ru/)\n` +
+         `*Купить товары:* [Перейти](https://servermishanyaya.easydonate.ru/)\n` +
+         `*Лаунчер, моды и ресурс пак для игры :* [Перейти](https://servermishanyaya.easydonate.ru/resources)\n` +
          `*Подпишитесь на телеграмм канал:* [MishanYaMine](https://t.me/+dt8Sh8x762FmYWYy)`;
 };
 
