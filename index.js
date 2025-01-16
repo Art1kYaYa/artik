@@ -1834,7 +1834,8 @@ const knownCommands = [
   `/tap_game`,
   `/guess`,
   `/game`,
-  `/worker_help`
+  `/worker_help`,
+  `/deliveries`
 ];
 
 // Обработчик всех сообщений
@@ -2067,3 +2068,64 @@ bot.on("callback_query", (callbackQuery) => {
     }
   }
 });
+// Список разрешённых пользователей (username или id)
+const allowedUsers = [
+  { id: 6081062380, username: 'user1' },
+  { id: 1923832824, username: 'user2' },
+  { id: 1788399054, username: 'user3' },
+  { id: 7886273686, username: 'user4' }
+];
+
+// Чтение данных из файла deliveries.json
+function getDeliveries() {
+  try {
+    if (!fs.existsSync('deliveries.json')) {
+      fs.writeFileSync('deliveries.json', '[]'); // Создать пустой JSON при необходимости
+      console.log('Файл deliveries.json создан.');
+    }
+    const data = fs.readFileSync('deliveries.json', 'utf8');
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Ошибка чтения/парсинга файла deliveries.json:', error.message);
+    return [];
+  }
+}
+
+// Форматирование списка заказов для отображения
+function formatDeliveries(deliveries) {
+  if (deliveries.length === 0) {
+    return 'Список заказов пуст.';
+  }
+
+  return deliveries.map((delivery, index) => {
+    return `${index + 1}. Ник: ${delivery.nickname}\n   Предметы: ${delivery.items}\n   Координаты: ${delivery.coordinates}\n   Дата: ${delivery.date}\n   ChatID: ${delivery.chatId}`;
+  }).join('\n\n');
+}
+
+// Проверка, есть ли пользователь в списке разрешённых
+function isUserAllowed(user) {
+  return allowedUsers.some((allowedUser) => allowedUser.id === user.id || allowedUser.username === user.username);
+}
+
+// Команда /deliveries
+bot.onText(/\/deliveries/, (msg) => {
+  const user = msg.from;
+  console.log('Проверяем пользователя:', user);
+
+  if (!isUserAllowed(user)) {
+    bot.sendMessage(msg.chat.id, 'У вас нет доступа к этой команде.');
+    return;
+  }
+
+  const deliveries = getDeliveries();
+  const response = formatDeliveries(deliveries);
+  bot.sendMessage(msg.chat.id, response);
+});
+
+// Логирование получения любого сообщения
+bot.on('message', (msg) => {
+  console.log(`Получено сообщение от пользователя: ${msg.from.username || 'без username'} (id: ${msg.from.id})`);
+});
+
+// Запуск бота
+console.log('Бот запущен');
