@@ -1195,78 +1195,77 @@ bot.on('callback_query', (query) => {
 
 
 
-// Команда для просмотра необработанных заявок с кнопками подтверждения
 bot.onText(/\/list_pending/, (msg) => {
   const chatId = msg.chat.id;
 
-  const pendingDeliveries = deliveries.filter((d) => d.status === 'pending');
+  // Фильтруем только заявки со статусом "в ожидании"
+  const pendingDeliveries = deliveries.filter((d) => d.status === 'в ожидании');
 
   if (pendingDeliveries.length === 0) {
     bot.sendMessage(chatId, '✅ Все заявки обработаны.');
     return;
   }
 
-  pendingDeliveries.forEach((delivery) => {
+  pendingDeliveries.forEach((delivery, index) => {
     bot.sendMessage(
       chatId,
-      `📦 *Заявка №${delivery.id}:*\n\n` +
+      `📦 *Заявка №${index + 1}:*\n\n` +
         `- Никнейм: ${delivery.nickname}\n` +
         `- Товары: ${delivery.items}\n` +
         `- Координаты: ${delivery.coordinates}\n` +
-        `- Дата: ${delivery.date}\n`,
+        `- Дата: ${delivery.date}\n` +
+        `- Статус: ${delivery.status}`,
       {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
             [
-              { text: `✅ Подтвердить заявку №${delivery.id}`, callback_data: `confirm_delivery_${delivery.id}` }
+              { text: `✅ Подтвердить заявку №${index + 1}`, callback_data: `confirm_delivery_${delivery.nickname}` }
             ]
           ]
         }
       }
     );
   });
-
-  // Кнопка для закрытия меню
-  bot.sendMessage(chatId, '📋 Все заявки отображены.', {
-    reply_markup: {
-      inline_keyboard: [[{ text: 'Закрыть меню', callback_data: 'close_menu' }]]
-    }
-  });
 });
 
-// Обработка нажатий на кнопки подтверждения заявки
-bot.on('callback_query', (query) => {
-  const data = query.data;
+// Обработка кнопки "Подтвердить доставку"
+bot.on('callback_query', (callbackQuery) => {
+  const data = callbackQuery.data;
 
   if (data.startsWith('confirm_delivery_')) {
-    const deliveryId = parseInt(data.split('_')[2]);
-    const delivery = deliveries.find((d) => d.id === deliveryId);
+    const nickname = data.replace('confirm_delivery_', '');
 
-    if (delivery && delivery.status === 'pending') {
-      delivery.status = 'completed';
+    // Находим заявку
+    const delivery = deliveries.find((delivery) => delivery.nickname === nickname && delivery.status === 'в ожидании');
+
+    if (delivery) {
+      delivery.status = 'доставлено'; // Обновляем статус
+
+      // Сохраняем изменения в файл
       saveDeliveries();
 
-      bot.answerCallbackQuery(query.id, { text: '✅ Заявка подтверждена.' });
+      // Отправляем уведомление администратору
+      bot.sendMessage(adminChatId, `✅ Доставка для ${nickname} подтверждена.`);
 
-      // Уведомление в чат
-      bot.sendMessage(
-        deliveryChatId,
-        `✅ Заявка №${delivery.id} успешно подтверждена!\nДоставка для игрока ${delivery.nickname} завершена.`
+      // Убираем кнопку подтверждения
+      bot.editMessageReplyMarkup(
+        { inline_keyboard: [] },
+        { chat_id: callbackQuery.message.chat.id, message_id: callbackQuery.message.message_id }
       );
 
-      // Уведомление игроку
-      bot.sendMessage(
-        query.message.chat.id,
-        `🎉 Ваша заявка на доставку была успешно выполнена!`
-      );
+      bot.answerCallbackQuery(callbackQuery.id, { text: 'Доставка подтверждена!' });
+
+      // Уведомляем пользователя
+      if (delivery.chatId) {
+        bot.sendMessage(
+          delivery.chatId,
+          `📦 Ваша заявка на доставку была успешно выполнена. Спасибо за использование нашего бота!`
+        );
+      }
     } else {
-      bot.answerCallbackQuery(query.id, { text: '❌ Заявка уже обработана или не найдена.' });
+      bot.answerCallbackQuery(callbackQuery.id, { text: 'Заявка не найдена или уже обработана.' });
     }
-  } else if (data === 'close_menu') {
-    // Удаляем сообщение с меню
-    bot.deleteMessage(query.message.chat.id, query.message.message_id);
-    bot.sendMessage(query.message.chat.id, 'Меню закрыто.');
   }
 });
 
@@ -1311,7 +1310,6 @@ function getCurrentDate() {
   const year = today.getFullYear();
   return `${day}/${month}/${year}`;
 }
-// Дополнительно добавляем информацию о боте
 
 // Команда /оформить_доставку
 bot.onText(/\/(oformit_dostavky|оформить_доставку)/, (msg) => {
@@ -1322,10 +1320,7 @@ bot.onText(/\/(oformit_dostavky|оформить_доставку)/, (msg) => {
 
   // Текст шаблона с текущей датой
   const deliveryTemplate =
-    `Никнейм: 
-Товары: 
-Координаты: x y z
-Дата оформление доставки: ${getCurrentDate()}`;
+    `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: ${getCurrentDate()}`;
 
   // Отправляем сообщение с инструкцией
   bot.sendMessage(
@@ -1356,12 +1351,8 @@ bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
 
   if (query.data === 'copy_delivery_template') {
-    // Отправляем текст шаблона пользователю для копирования
     const deliveryTemplate =
-      `Никнейм: 
-Товары: 
-Координаты: x y z
-Дата оформление доставки: ${getCurrentDate()}`;
+      `Никнейм: \nТовары: \nКоординаты: x y z\nДата оформление доставки: ${getCurrentDate()}`;
     bot.sendMessage(chatId, deliveryTemplate, { parse_mode: 'Markdown' });
     bot.answerCallbackQuery(query.id, { text: 'Шаблон отправлен!' });
   }
@@ -1372,10 +1363,8 @@ bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
-  // Если пользователь не вводил команду /оформить_доставку, игнорируем
   if (deliveryAttempts[chatId] === undefined) return;
 
-  // Проверяем, соответствует ли сообщение формату
   if (deliveryFormatRegex.test(text)) {
     const match = text.match(deliveryFormatRegex);
     const nickname = match[1].trim();
@@ -1388,31 +1377,30 @@ bot.on('message', (msg) => {
       return;
     }
 
-    deliveryAttempts[chatId] = 0; // Сбрасываем счетчик
+    deliveryAttempts[chatId] = 0;
 
     const deliveryData = {
       nickname: nickname,
       items: match[2].trim(),
       coordinates: match[3].trim(),
       date: match[4].trim(),
-      chatId: chatId, // Сохраняем ID чата отправителя
+      chatId: chatId,
+      status: 'в ожидании', // Устанавливаем статус "в ожидании"
     };
 
-    // Добавляем данные в список доставок и сохраняем
     deliveries.push(deliveryData);
     saveDeliveries();
 
-    // Оповещаем игрока
     bot.sendMessage(chatId, '✅ Ваша заявка успешно отправлена на обработку!');
 
-    // Отправляем заявку в админский чат
     bot.sendMessage(
       adminChatId,
       `📦 *Новая заявка на доставку:*\n\n` +
         `*Никнейм:* ${deliveryData.nickname}\n` +
         `*Товары:* ${deliveryData.items}\n` +
         `*Координаты:* ${deliveryData.coordinates}\n` +
-        `*Дата оформления доставки:* ${deliveryData.date}`,
+        `*Дата оформления доставки:* ${deliveryData.date}\n` +
+        `*Статус:* ${deliveryData.status}`,
       {
         parse_mode: 'Markdown',
         reply_markup: {
@@ -1428,11 +1416,9 @@ bot.on('message', (msg) => {
       }
     );
   } else {
-    // Увеличиваем счетчик ошибок
     deliveryAttempts[chatId] = (deliveryAttempts[chatId] || 0) + 1;
 
     if (deliveryAttempts[chatId] >= 3) {
-      // Сброс после трех неудачных попыток
       delete deliveryAttempts[chatId];
       bot.sendMessage(
         chatId,
@@ -1460,30 +1446,27 @@ bot.on('callback_query', (callbackQuery) => {
   if (data.startsWith('confirm_')) {
     const nickname = data.split('_')[1];
 
-    // Находим заявку по никнейму
     const delivery = deliveries.find((delivery) => delivery.nickname === nickname);
 
-    // Удаляем заявку
-    deliveries = deliveries.filter((delivery) => delivery.nickname !== nickname);
-    saveDeliveries();
-
-    // Уведомляем администратора
-    bot.sendMessage(adminChatId, `✅ Доставка для ${nickname} подтверждена.`);
-
-    // Убираем кнопку из сообщения
-    bot.editMessageReplyMarkup(
-      { inline_keyboard: [] },
-      { chat_id: callbackQuery.message.chat.id, message_id: callbackQuery.message.message_id }
-    );
-
-    bot.answerCallbackQuery(callbackQuery.id, { text: 'Доставка подтверждена!' });
-
-    // Отправляем уведомление пользователю, который отправил заявку
     if (delivery) {
+      delivery.status = 'доставлено'; // Обновляем статус
+      saveDeliveries();
+
+      bot.sendMessage(adminChatId, `✅ Доставка для ${nickname} подтверждена.`);
+
+      bot.editMessageReplyMarkup(
+        { inline_keyboard: [] },
+        { chat_id: callbackQuery.message.chat.id, message_id: callbackQuery.message.message_id }
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id, { text: 'Доставка подтверждена!' });
+
       bot.sendMessage(
         delivery.chatId,
         `📦 Ваша заявка на доставку была успешно выполнена. Спасибо за использование нашего бота!`
       );
+    } else {
+      bot.answerCallbackQuery(callbackQuery.id, { text: 'Заявка не найдена!' });
     }
   }
 });
@@ -1809,7 +1792,7 @@ bot.onText(/\/all/, (msg) => {
 const knownCommands = [
   '/start',
   '/help',
-  '/order_delivery',
+  '/oformit_dostavky',
   '/оформить_доставку',
   '/contact',
   `/all`,
@@ -1835,7 +1818,7 @@ const knownCommands = [
   `/guess`,
   `/game`,
   `/worker_help`,
-  `/deliveries`
+  `/list_pending`
 ];
 
 // Обработчик всех сообщений
