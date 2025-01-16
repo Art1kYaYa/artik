@@ -22,7 +22,7 @@ client.connect().catch((err) => {
 
 // Сообщения для случайной отправки
 const randomMessages = [
-    `Подпишитесь на телеграмм канал MishanYaMine - https://t.me/+dt8Sh8x762FmYWYy`
+    'Подпишитесь на телеграмм канал MishanYaMine - https://t.me/+dt8Sh8x762FmYWYy'
 ];
 
 // Ключевые фразы для триггера сервера
@@ -88,12 +88,8 @@ function getRandomMessage() {
     return randomMessages[randomIndex];
 }
 
-// Отправка случайного сообщения каждые 3 минуты
-setInterval(() => {
-    const message = getRandomMessage();
-    client.say(opts.channels[0], message);
-    console.log(`Отправлено случайное сообщение: ${message}`);
-}, 3 * 60 * 1000); // Каждые 3 минуты
+// Счетчик сообщений
+let messageCount = 0;
 
 // Обработка сообщений в чате
 client.on('message', (channel, tags, message, self) => {
@@ -103,20 +99,32 @@ client.on('message', (channel, tags, message, self) => {
     const lowerCaseMessage = message.toLowerCase();
 
     // Сообщение-ответ для фразы о сервере
-    const responseMessage = `Чтобы поиграть с MishanYaMine на его ПРИВАТНОМ РП СЕРВЕРЕ, нужно оплатить проходку которая стоит ВСЕГО 199 Рублей, ЛИБО НАКОПИТЬ 1К БАЛЛОВ НА МОЕМ ТВИЧ КАНАЛЕ. ПОСЛЕ ОПЛАТЫ напиши мне в VK - https://vk.com/mishanyaya2222`;
+    const responseMessage = 'Чтобы поиграть с MishanYaMine на его ПРИВАТНОМ РП СЕРВЕРЕ, нужно оплатить проходку которая стоит ВСЕГО 199 Рублей, ЛИБО НАКОПИТЬ 1К БАЛЛОВ НА МОЕМ ТВИЧ КАНАЛЕ. ПОСЛЕ ОПЛАТЫ напиши мне в VK - https://vk.com/mishanyaya2222';
 
     // Проверяем ключевые слова для фразы о сервере
     if (keywords.some(keyword => lowerCaseMessage.includes(keyword)) || triggerPhrases.some(phrase => lowerCaseMessage.includes(phrase.toLowerCase()))) {
         client.say(channel, responseMessage);
     }
 
- // Ключевые фразы для приветствия
-const greetings = ['ку', 'привет', 'здарова', 'hi', 'hello', 'хай', 'салам', 'САЛАМ', 'куу', 'кууу', 'куууу', 'кууууу', 'куууууу'];
-
+    // Ключевые фразы для приветствия
+    const greetings = ['ку', 'привет', 'здарова', 'hi', 'hello', 'хай', 'салам', 'САЛАМ', 'куу', 'кууу', 'куууу', 'кууууу', 'куууууу'];
 
     // Проверяем ключевые фразы для приветствия
     if (greetings.some(greeting => lowerCaseMessage.split(/\s+/).includes(greeting))) {
         client.say(channel, `Добро пожаловать на стрим, ${tags.username}!`);
+    }
+
+    // Увеличиваем счетчик сообщений
+    messageCount++;
+
+    // Когда счетчик достигает 20, отправляем случайное сообщение
+    if (messageCount >= 20) {
+        const randomMessage = getRandomMessage();
+        client.say(channel, randomMessage);
+        console.log(`Отправлено случайное сообщение: ${randomMessage}`);
+        
+        // Сбрасываем счетчик сообщений
+        messageCount = 0;
     }
 });
 
