@@ -28,28 +28,6 @@ function loadData(filename) {
 function saveData(filename, data) {
   fs.writeFileSync(filename, JSON.stringify(data, null, 2));
 }
-// Сообщение для приветствия
-const welcomeMessage = (name) => {
-  return `Добро пожаловать, ${name}! 🎉\n\n` +
-         `*Правила сервера:* [Ознакомиться](https://telegra.ph/Pravila-Servera-07-19-3)\n` +
-         `*Глобальная информация:* [Подробнее](https://telegra.ph/informaciya-07-19-64)\n` +
-         `*Twitch:* [mishanyamine](https://www.twitch.tv/mishanyamine)\n` +
-         `*Купить товары:* [Перейти](https://servermishanyaya.easydonate.ru/)\n` +
-         `*Лаунчер, моды и ресурс пак для игры :* [Перейти](https://servermishanyaya.easydonate.ru/resources)\n` +
-         `*Подпишитесь на телеграмм канал:* [MishanYaMine](https://t.me/+dt8Sh8x762FmYWYy)`;
-};
-
-// Слушаем события добавления нового пользователя в чат
-bot.on('new_chat_members', (msg) => {
-  const newUser = msg.new_chat_members[0];
-  const userName = newUser.first_name || 'Пользователь'; // Используйте имя, если оно есть, или 'Пользователь'
-
-  bot.sendMessage(msg.chat.id, welcomeMessage(userName), { parse_mode: 'Markdown' });
-});
-bot.on('polling_error', (error) => {
-  console.log(error);  // Выведет подробности ошибки
-});
-
 // Команда /help
 bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
