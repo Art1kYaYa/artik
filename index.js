@@ -1,7 +1,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
 
-const token = '7758731240:AAHEtPHVTX-CfWqlwVk7zTim1_SwUHqFbcc';
+const token = '7758731240:AAHUiby8rtuqDxgibdYcTef2ltnM90M4VHE';
 const bot = new TelegramBot(token, { polling: true });
 const adminChatId = -1002400665091; // ID админского чата
 
