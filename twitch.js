@@ -127,7 +127,13 @@ client.on('message', (channel, tags, message, self) => {
         messageCount = 0;
     }
 });
-
+// Устанавливает задержку перед следующей отправкой сообщения
+function setMessageCooldown() {
+    canSendMessage = false;
+    setTimeout(() => {
+        canSendMessage = true;
+    }, 10000); // 10 секунд
+}
 // Обработка событий ошибки
 client.on('error', (err) => {
     console.error('Ошибка клиента:', err);
