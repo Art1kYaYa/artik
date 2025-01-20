@@ -25,11 +25,6 @@ const randomMessages = [
     'Подпишитесь на телеграмм канал MishanYaMine - https://t.me/+dt8Sh8x762FmYWYy'
 ];
 
-// Ключевые фразы для триггера сервера
-const keywords = [
-    '! server', '!server', '! сервер'
-];
-
 // Ключевые фразы для триггера сообщений о сервере
 const triggerPhrases = [
     'Как зайти на сервер?',
@@ -88,6 +83,25 @@ function getRandomMessage() {
     return randomMessages[randomIndex];
 }
 
+// Таймеры для ограничения отправки сообщений
+let canSendGreeting = true;
+let canSendServerMessage = true;
+
+// Устанавливает задержку перед следующей отправкой сообщений
+function setGreetingCooldown() {
+    canSendGreeting = false;
+    setTimeout(() => {
+        canSendGreeting = true;
+    }, 10000); // 10 секунд
+}
+
+function setServerMessageCooldown() {
+    canSendServerMessage = false;
+    setTimeout(() => {
+        canSendServerMessage = true;
+    }, 10000); // 10 секунд
+}
+
 // Счетчик сообщений
 let messageCount = 0;
 
@@ -102,16 +116,18 @@ client.on('message', (channel, tags, message, self) => {
     const responseMessage = 'Чтобы поиграть с MishanYaMine на его ПРИВАТНОМ РП СЕРВЕРЕ, нужно оплатить проходку которая стоит ВСЕГО 199 Рублей, ЛИБО НАКОПИТЬ 1К БАЛЛОВ НА МОЕМ ТВИЧ КАНАЛЕ. ПОСЛЕ ОПЛАТЫ напиши мне в VK - https://vk.com/mishanyaya2222';
 
     // Проверяем ключевые слова для фразы о сервере
-    if (keywords.some(keyword => lowerCaseMessage.includes(keyword)) || triggerPhrases.some(phrase => lowerCaseMessage.includes(phrase.toLowerCase()))) {
+    if (triggerPhrases.some(phrase => lowerCaseMessage.includes(phrase.toLowerCase())) && canSendServerMessage) {
         client.say(channel, responseMessage);
+        setServerMessageCooldown();
     }
 
     // Ключевые фразы для приветствия
     const greetings = ['ку', 'привет', 'здарова', 'hi', 'hello', 'хай', 'салам', 'САЛАМ', 'куу', 'кууу', 'куууу', 'кууууу', 'куууууу'];
 
     // Проверяем ключевые фразы для приветствия
-    if (greetings.some(greeting => lowerCaseMessage.split(/\s+/).includes(greeting))) {
+    if (greetings.some(greeting => lowerCaseMessage.split(/\s+/).includes(greeting)) && canSendGreeting) {
         client.say(channel, `Добро пожаловать на стрим, ${tags.username}!`);
+        setGreetingCooldown();
     }
 
     // Увеличиваем счетчик сообщений
@@ -127,13 +143,7 @@ client.on('message', (channel, tags, message, self) => {
         messageCount = 0;
     }
 });
-// Устанавливает задержку перед следующей отправкой сообщения
-function setMessageCooldown() {
-    canSendMessage = false;
-    setTimeout(() => {
-        canSendMessage = true;
-    }, 10000); // 10 секунд
-}
+
 // Обработка событий ошибки
 client.on('error', (err) => {
     console.error('Ошибка клиента:', err);
